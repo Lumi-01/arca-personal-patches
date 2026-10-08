@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-09T02:32:04",
-  "description": "Arca Live Plus and Play Store patches: in-app Morphe settings for app ads and smooth full-width navigation, analytics reduction, media download streaming; user ads remain",
-  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.1/patches-0.3.1.mpp",
+  "created_at": "2026-10-09T03:02:24",
+  "description": "Arca Live Plus and Play Store patches: in-app ad and navigation switches, analytics reduction, media streaming, and optional Activity motion/theme experiments; user ads remain",
+  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.2/patches-0.3.2.mpp",
   "signature_download_url": "",
-  "version": "0.3.1"
+  "version": "0.3.2"
 }
