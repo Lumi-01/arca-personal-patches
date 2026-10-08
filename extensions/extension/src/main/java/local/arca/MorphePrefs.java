@@ -38,11 +38,5 @@ public final class MorphePrefs {
         if (prefs != null) prefs.edit().putBoolean(SMOOTH, enabled).apply();
     }
 
-    public static int navigationDuration() { return smoothNavigation ? 210 : 250; }
-    public static int enterDistance(int fullWidth) {
-        return smoothNavigation ? Math.round(fullWidth * 0.55f) : fullWidth;
-    }
-    public static int exitDistance(int originalDistance) {
-        return smoothNavigation ? Math.round(originalDistance * 0.5f) : originalDistance;
-    }
+    public static int navigationDuration() { return smoothNavigation ? 280 : 250; }
 }

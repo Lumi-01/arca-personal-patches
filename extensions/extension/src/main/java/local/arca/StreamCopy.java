@@ -9,13 +9,11 @@ public final class StreamCopy {
 
     public static void copy(InputStream input, OutputStream output) throws IOException {
         byte[] buffer = new byte[64 * 1024];
-        try {
+        try (InputStream source = input; OutputStream target = output) {
             int count;
-            while ((count = input.read(buffer)) != -1) {
-                output.write(buffer, 0, count);
+            while ((count = source.read(buffer)) != -1) {
+                target.write(buffer, 0, count);
             }
-        } finally {
-            input.close();
         }
     }
 }

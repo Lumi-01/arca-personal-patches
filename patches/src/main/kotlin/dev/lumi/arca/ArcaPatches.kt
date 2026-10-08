@@ -193,34 +193,26 @@ val appAdsPatch = bytecodePatch(
             val nav = Fingerprint(definingClass = "LKa/n;", name = name,
                 parameters = emptyList(), returnType = if (name == "g" || name == "i")
                     "Landroidx/compose/animation/i;" else "Landroidx/compose/animation/k;").method
+            val navInstructions = nav.implementation!!.instructions
+            val easing = navInstructions.indexOfFirst {
+                (it as? ReferenceInstruction)?.reference.toString().contains("Ls/H;->e()Ls/F;") == true
+            }
+            check(easing >= 0 && navInstructions[easing + 1].opcode == Opcode.MOVE_RESULT_OBJECT) {
+                "Navigation easing changed: $name"
+            }
+            nav.addInstructions(easing + 2, """
+                invoke-static {}, Llocal/arca/MorphePrefs;->smoothNavigation()Z
+                move-result v1
+                if-eqz v1, :morphe_original_easing
+                invoke-static {}, Ls/H;->c()Ls/F;
+                move-result-object v0
+                :morphe_original_easing
+            """.trimIndent())
             val duration = nav.implementation!!.instructions.indexOfFirst { it.opcode == Opcode.CONST_16 }
             check(duration >= 0) { "Navigation duration changed: $name" }
             nav.replaceInstruction(duration,
                 "invoke-static {}, Llocal/arca/MorphePrefs;->navigationDuration()I")
             nav.addInstructions(duration + 1, "move-result v3")
-        }
-        for (name in listOf("j", "n")) {
-            val nav = Fingerprint(definingClass = "LKa/n;", name = name,
-                parameters = listOf("Lb1/t;"), returnType = "Lb1/p;").method
-            val width = nav.implementation!!.instructions.indexOfFirst {
-                (it as? ReferenceInstruction)?.reference.toString()
-                    ?.contains("Lb1/t;->g(J)I") == true
-            }
-            check(width >= 0) { "Navigation enter distance changed: $name" }
-            nav.addInstructions(width + 2, """
-                invoke-static {p0}, Llocal/arca/MorphePrefs;->enterDistance(I)I
-                move-result p0
-            """.trimIndent())
-        }
-        for (name in listOf("h", "l")) {
-            val nav = Fingerprint(definingClass = "LKa/n;", name = name,
-                parameters = listOf("Lb1/t;"), returnType = "Lb1/p;").method
-            val distance = nav.implementation!!.instructions.indexOfFirst { it.opcode == Opcode.DIV_INT_LIT8 }
-            check(distance >= 0) { "Navigation exit distance changed: $name" }
-            nav.addInstructions(distance + 1, """
-                invoke-static {p0}, Llocal/arca/MorphePrefs;->exitDistance(I)I
-                move-result p0
-            """.trimIndent())
         }
     }
 }
@@ -238,8 +230,8 @@ val trackerReductionPatch = bytecodePatch(
 /** Only the image download endpoint is switched to streaming. */
 @Suppress("unused")
 val streamingDownloadPatch = bytecodePatch(
-    name = "이미지 저장 스트리밍 (플레이스토어)",
-    description = "이미지를 통째로 메모리에 읽지 않고 작은 버퍼로 저장합니다. 저장 속도 개선량은 네트워크 상태에 따라 다릅니다.",
+    name = "미디어 저장 스트리밍 (플레이스토어)",
+    description = "이미지·GIF·동영상 다운로드를 통째로 메모리에 읽지 않고 작은 버퍼로 저장합니다. 재생·미리보기에는 적용되지 않습니다.",
     default = true,
 ) {
     compatibleWith(arcaPlay)
@@ -280,8 +272,8 @@ val streamingDownloadPatch = bytecodePatch(
 /** The Plus build uses a private MediaStore saver; its legacy saver already streams. */
 @Suppress("unused")
 val streamingDownloadPlusPatch = bytecodePatch(
-    name = "이미지 저장 스트리밍 (플러스)",
-    description = "플러스 앱의 MediaStore 이미지 저장을 작은 버퍼로 처리합니다. 저장 속도 개선량은 네트워크 상태에 따라 다릅니다.",
+    name = "미디어 저장 스트리밍 (플러스)",
+    description = "플러스 앱의 이미지·GIF·동영상 저장을 작은 버퍼로 처리합니다. 재생·미리보기에는 적용되지 않습니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
