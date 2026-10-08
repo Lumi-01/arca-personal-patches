@@ -1,73 +1,15 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "patches": [
     {
-      "name": "Morphe 설정·광고·화면 전환",
-      "description": "앱 설정에 Morphe 설정을 추가합니다. 앱 이미지 광고 제거와 가벼운 화면 전환을 앱에서 조절할 수 있습니다.",
+      "name": "Morphe 설정·광고·스프링 전환",
+      "description": "앱 설정에 광고 제어를 추가하고, 원본 좌우 이동을 유지한 채 화면 전환의 시간 곡선만 스프링으로 바꿉니다.",
       "default": true,
       "category": null,
       "dependencies": [
         "ResourcePatch"
       ],
-      "compatiblePackages": [
-        {
-          "packageName": "live.arca.android.playstore",
-          "name": "Arca Live (Play Store)",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.35185",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        },
-        {
-          "packageName": "live.arca.android",
-          "name": "Arca Live Plus",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.32768",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        }
-      ],
-      "options": []
-    },
-    {
-      "name": "게시글 화면 경량화",
-      "description": "게시글 창의 원본 투명 테마를 불투명 테마로 바꾸는 실험 옵션입니다. 성능 개선은 확인되지 않아 기본값은 꺼져 있습니다.",
-      "default": false,
-      "category": null,
-      "dependencies": [],
       "compatiblePackages": [
         {
           "packageName": "live.arca.android.playstore",
@@ -196,64 +138,6 @@
       "dependencies": [
         "ResourcePatch"
       ],
-      "compatiblePackages": [
-        {
-          "packageName": "live.arca.android.playstore",
-          "name": "Arca Live (Play Store)",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.35185",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        },
-        {
-          "packageName": "live.arca.android",
-          "name": "Arca Live Plus",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.32768",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        }
-      ],
-      "options": []
-    },
-    {
-      "name": "화면 전환 애니메이션 조정",
-      "description": "별도 Activity로 열리는 화면의 좌우 슬라이드를 300ms로 조정하는 실험 옵션입니다. 일반 채널→게시글 이동에는 적용되지 않습니다.",
-      "default": false,
-      "category": null,
-      "dependencies": [],
       "compatiblePackages": [
         {
           "packageName": "live.arca.android.playstore",
