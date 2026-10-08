@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-08T16:32:09Z",
+  "created_at": "2026-10-08T16:32:09",
   "description": "Experimental Arca Live Plus 0.9.32768 and Play Store 0.9.35185 patches: remove app-ad request and ¡Hola! slot, reduce measurement jobs, stream media downloads; user ads remain",
   "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.2.0/patches-0.2.0.mpp",
   "signature_download_url": "",
