@@ -106,7 +106,7 @@ private val morpheSettingsManifestPatch = resourcePatch {
 @Suppress("unused")
 val appAdsPatch = bytecodePatch(
     name = "Morphe 설정·광고·스프링 전환",
-    description = "앱 설정에 광고 제어를 추가하고, 원본 좌우 이동을 유지한 채 화면 전환의 시간 곡선만 스프링으로 바꿉니다.",
+    description = "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동을 유지하면서 스프링의 보이지 않는 끝부분 그리기를 줄입니다.",
     default = true,
 ) {
     compatibleWith(arcaPlay, arcaPlus)
@@ -190,9 +190,9 @@ val appAdsPatch = bytecodePatch(
             :morphe_existing_row
         """.trimIndent())
 
-        // Preserve the stock slide directions and offsets. Replace only the
-        // four shared Compose tween specs with a non-bouncing spring, removing
-        // the now-unused tween easing and duration setup along the way.
+        // Preserve the stock slide directions and offsets. A 1 px visibility
+        // threshold ends the spring once its remaining movement is invisible,
+        // so outgoing and incoming screens are not drawn through a long tail.
         Fingerprint(definingClass = "Ls/k;", name = "k",
             parameters = listOf("F", "F", "Ljava/lang/Object;"),
             returnType = "Ls/m0;").method
@@ -218,13 +218,16 @@ val appAdsPatch = bytecodePatch(
                 nav.implementation!!.registerCount == 5) {
                 "Navigation animation changed: $name"
             }
-            nav.replaceInstruction(easing, "nop")
-            nav.replaceInstruction(easing + 1, "nop")
-            nav.replaceInstruction(easing + 2, "const v1, 0x3f800000")
-            nav.replaceInstruction(easing + 3, "const v2, 0x44160000")
-            nav.replaceInstruction(easing + 4, "const/4 v3, 0x0")
-            nav.replaceInstruction(easing + 5, "nop")
-            nav.replaceInstruction(tween,
+            nav.replaceInstruction(easing, "const v1, 0x3f800000")
+            nav.replaceInstruction(easing + 1, "const v2, 0x44960000")
+            nav.replaceInstruction(easing + 2, "const/4 v3, 0x1")
+            nav.replaceInstruction(easing + 3,
+                "invoke-static {v3, v3}, Lb1/q;->a(II)J")
+            nav.replaceInstruction(easing + 4, "move-result-wide v3")
+            nav.replaceInstruction(easing + 5,
+                "invoke-static {v3, v4}, Lb1/p;->b(J)Lb1/p;")
+            nav.addInstructions(tween, "move-result-object v3")
+            nav.replaceInstruction(tween + 1,
                 "invoke-static {v1, v2, v3}, Ls/k;->k(FFLjava/lang/Object;)Ls/m0;")
         }
     }
