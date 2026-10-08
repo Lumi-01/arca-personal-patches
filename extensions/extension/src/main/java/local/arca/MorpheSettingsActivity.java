@@ -63,7 +63,7 @@ public final class MorpheSettingsActivity extends Activity {
         body.setPadding(dp(20), dp(8), dp(20), dp(24));
         section(body, "화면");
         toggle(body, "부드러운 화면 전환",
-                "화면을 끝까지 밀어 자연스럽게 연결하고 가속·감속을 부드럽게 조정합니다. 전환 시간은 280ms이며, 끄면 기존 250ms로 돌아갑니다.",
+                "앱 내부 이동은 280ms 슬라이드를 사용합니다. Morphe에서 화면 전환 애니메이션 조정 패치도 선택한 경우 별도 Activity 이동은 300ms로 바뀝니다. 끄면 기존 250ms 효과로 돌아갑니다.",
                 MorphePrefs.smoothNavigation(), MorphePrefs::setSmoothNavigation);
         section(body, "광고");
         toggle(body, "앱 광고 요청·영역 제거",
@@ -72,6 +72,8 @@ public final class MorpheSettingsActivity extends Activity {
         section(body, "패치 시 적용되는 기능");
         info(body, "분석 수집·백그라운드 작업 축소",
                 "Morphe에서 이 패치를 선택한 경우 설치 시 적용됩니다. 변경하려면 다시 빌드하세요.");
+        info(body, "게시글 화면 경량화",
+                "Morphe에서 패치할 때 선택하는 실험 옵션입니다. 게시글 창의 투명 테마를 바꾸지만 성능 개선은 확인되지 않았습니다. 앱 재실행만으로 변경할 수 없습니다.");
         info(body, "미디어 저장 스트리밍",
                 "Morphe에서 이 패치를 선택한 경우 이미지·GIF·동영상 저장 시 작은 버퍼를 사용합니다. 재생과 미리보기에는 적용되지 않습니다.");
         scroll.addView(body);

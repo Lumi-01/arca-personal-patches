@@ -9,6 +9,7 @@ public final class MorphePrefs {
     private static final String ADS = "block_app_ads";
     private static final String SMOOTH = "smooth_navigation";
     private static volatile SharedPreferences preferences;
+    private static volatile Context applicationContext;
     private static volatile boolean blockAds = true;
     private static volatile boolean smoothNavigation = true;
 
@@ -16,15 +17,18 @@ public final class MorphePrefs {
 
     public static synchronized void init(Context context) {
         if (preferences != null) return;
-        SharedPreferences prefs = context.getApplicationContext()
+        Context app = context.getApplicationContext();
+        SharedPreferences prefs = app
                 .getSharedPreferences(FILE, Context.MODE_PRIVATE);
         blockAds = prefs.getBoolean(ADS, true);
         smoothNavigation = prefs.getBoolean(SMOOTH, true);
         preferences = prefs;
+        applicationContext = app;
     }
 
     public static boolean blockAds() { return blockAds; }
     public static boolean smoothNavigation() { return smoothNavigation; }
+    public static Context context() { return applicationContext; }
 
     public static void setBlockAds(boolean enabled) {
         blockAds = enabled;

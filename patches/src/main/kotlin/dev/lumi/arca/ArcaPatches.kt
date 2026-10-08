@@ -101,6 +101,64 @@ private val morpheSettingsManifestPatch = resourcePatch {
     }
 }
 
+/** Experimental theme switch; keep opt-in until a device benefit is established. */
+@Suppress("unused")
+val opaqueArticleWindowPatch = resourcePatch(
+    name = "게시글 화면 경량화",
+    description = "게시글 창의 원본 투명 테마를 불투명 테마로 바꾸는 실험 옵션입니다. 성능 개선은 확인되지 않아 기본값은 꺼져 있습니다.",
+    default = false,
+) {
+    compatibleWith(arcaPlay, arcaPlus)
+    execute {
+        document("AndroidManifest.xml").use { document ->
+            val activities = document.documentElement.getElementsByTagName("activity")
+            val article = (0 until activities.length).map { activities.item(it) as Element }
+                .singleOrNull {
+                    it.getAttribute("android:name") ==
+                        "live.arca.android.compose.feature.article.ArticleActivity"
+                } ?: error("ArticleActivity manifest entry changed")
+            check(article.getAttribute("android:theme") == "@style/TransparentActivity") {
+                "ArticleActivity theme changed"
+            }
+            article.setAttribute("android:theme", "@style/AppTheme.NoActionBar")
+        }
+    }
+}
+
+/** The app's activity transitions are separate from its Compose navigation. */
+@Suppress("unused")
+val activityMotionPatch = resourcePatch(
+    name = "화면 전환 애니메이션 조정",
+    description = "별도 Activity로 열리는 화면의 좌우 슬라이드를 300ms로 조정하는 실험 옵션입니다. 일반 채널→게시글 이동에는 적용되지 않습니다.",
+    default = false,
+) {
+    compatibleWith(arcaPlay, arcaPlus)
+    execute {
+        val motions = mapOf(
+            "pull_in_left" to Pair("-29.999996%", "0.0%"),
+            "pull_in_right" to Pair("100.0%", "0.0%"),
+            "push_out_left" to Pair("0.0%", "-29.999996%"),
+            "push_out_right" to Pair("0.0%", "100.0%"),
+        )
+        motions.forEach { (name, travel) ->
+            val file = get("res/anim/$name.xml")
+            val original = file.readText()
+            check(original.contains("android:duration=\"250\"") &&
+                original.contains("android:interpolator=\"@android:anim/decelerate_interpolator\"")) {
+                "Activity transition changed: $name"
+            }
+            get("res/anim/morphe_original_$name.xml").writeText(original)
+            file.writeText("""
+                <?xml version="1.0" encoding="utf-8"?>
+                <set xmlns:android="http://schemas.android.com/apk/res/android" android:duration="300">
+                    <translate android:interpolator="@android:interpolator/fast_out_slow_in"
+                        android:fromXDelta="${travel.first}" android:toXDelta="${travel.second}" />
+                </set>
+            """.trimIndent())
+        }
+    }
+}
+
 /** The page image ad is distinct from user-submitted posts and the text-ad API. */
 @Suppress("unused")
 val appAdsPatch = bytecodePatch(
@@ -213,6 +271,17 @@ val appAdsPatch = bytecodePatch(
             nav.replaceInstruction(duration,
                 "invoke-static {}, Llocal/arca/MorphePrefs;->navigationDuration()I")
             nav.addInstructions(duration + 1, "move-result v3")
+        }
+        for (name in listOf("d", "g", "i", "l")) {
+            val getter = Fingerprint(definingClass = "LJa/r;", name = name,
+                parameters = emptyList(), returnType = "I").method
+            val code = getter.implementation!!.instructions
+            check(code.size >= 2 && code.first().opcode == Opcode.IGET &&
+                code.last().opcode == Opcode.RETURN) { "Activity animation getter changed: $name" }
+            getter.addInstructions(code.size - 1, """
+                invoke-static {v0}, Llocal/arca/MorpheActivityMotion;->resolve(I)I
+                move-result v0
+            """.trimIndent())
         }
     }
 }
