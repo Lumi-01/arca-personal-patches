@@ -1,40 +1,16 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "patches": [
     {
       "name": "Morphe 설정·광고·스프링 전환",
-      "description": "앱 설정에 광고 제어를 추가하고, 원본 좌우 이동을 유지한 채 화면 전환의 시간 곡선만 스프링으로 바꿉니다.",
+      "description": "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동을 유지하면서 스프링의 보이지 않는 끝부분 그리기를 줄입니다.",
       "default": true,
       "category": null,
       "dependencies": [
         "ResourcePatch"
       ],
       "compatiblePackages": [
-        {
-          "packageName": "live.arca.android.playstore",
-          "name": "Arca Live (Play Store)",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.35185",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        },
         {
           "packageName": "live.arca.android",
           "name": "Arca Live Plus",
@@ -97,40 +73,6 @@
       "options": []
     },
     {
-      "name": "미디어 저장 스트리밍 (플레이스토어)",
-      "description": "이미지·GIF·동영상 다운로드를 통째로 메모리에 읽지 않고 작은 버퍼로 저장합니다. 재생·미리보기에는 적용되지 않습니다.",
-      "default": true,
-      "category": null,
-      "dependencies": [],
-      "compatiblePackages": [
-        {
-          "packageName": "live.arca.android.playstore",
-          "name": "Arca Live (Play Store)",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.35185",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        }
-      ],
-      "options": []
-    },
-    {
       "name": "분석 수집·백그라운드 작업 축소",
       "description": "분석·충돌·세션 수집과 측정 서비스·작업을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
       "default": true,
@@ -139,30 +81,6 @@
         "ResourcePatch"
       ],
       "compatiblePackages": [
-        {
-          "packageName": "live.arca.android.playstore",
-          "name": "Arca Live (Play Store)",
-          "description": null,
-          "apkFileType": "APK",
-          "appIconColor": "#303C70",
-          "signatures": null,
-          "targets": [
-            {
-              "version": "0.9.35185",
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            },
-            {
-              "version": null,
-              "versionCodes": null,
-              "isExperimental": true,
-              "minSdk": null,
-              "description": null
-            }
-          ]
-        },
         {
           "packageName": "live.arca.android",
           "name": "Arca Live Plus",

@@ -16,17 +16,6 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableAnnotation
 import org.w3c.dom.Element
 
-private val arcaPlay = Compatibility(
-    name = "Arca Live (Play Store)",
-    packageName = "live.arca.android.playstore",
-    apkFileType = ApkFileType.APK,
-    appIconColor = 0x303C70,
-    targets = listOf(
-        AppTarget(version = "0.9.35185", isExperimental = true),
-        AppTarget(version = null, isExperimental = true),
-    ),
-)
-
 private val arcaPlus = Compatibility(
     name = "Arca Live Plus",
     packageName = "live.arca.android",
@@ -109,7 +98,7 @@ val appAdsPatch = bytecodePatch(
     description = "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동을 유지하면서 스프링의 보이지 않는 끝부분 그리기를 줄입니다.",
     default = true,
 ) {
-    compatibleWith(arcaPlay, arcaPlus)
+    compatibleWith(arcaPlus)
     dependsOn(morpheSettingsManifestPatch)
     extendWith("extensions/extension.mpe")
     execute {
@@ -239,50 +228,8 @@ val trackerReductionPatch = bytecodePatch(
     description = "분석·충돌·세션 수집과 측정 서비스·작업을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
     default = true,
 ) {
-    compatibleWith(arcaPlay, arcaPlus)
+    compatibleWith(arcaPlus)
     dependsOn(trackerManifestPatch)
-}
-
-/** Only the image download endpoint is switched to streaming. */
-@Suppress("unused")
-val streamingDownloadPatch = bytecodePatch(
-    name = "미디어 저장 스트리밍 (플레이스토어)",
-    description = "이미지·GIF·동영상 다운로드를 통째로 메모리에 읽지 않고 작은 버퍼로 저장합니다. 재생·미리보기에는 적용되지 않습니다.",
-    default = true,
-) {
-    compatibleWith(arcaPlay)
-    extendWith("extensions/extension.mpe")
-    execute {
-        val endpoint = Fingerprint(
-            definingClass = "LN8/a;", name = "c",
-            parameters = listOf("Ljava/lang/String;", "LS7/e;"),
-            returnType = "Ljava/lang/Object;",
-        ).method
-        check(endpoint.annotations.none { it.type == "LXb/w;" }) { "Download endpoint already streams" }
-        endpoint.annotations.add(MutableAnnotation(
-            ImmutableAnnotation(AnnotationVisibility.RUNTIME, "LXb/w;", emptyList())
-        ))
-
-        val saver = Fingerprint(
-            definingClass = "LYa/i;", name = "a",
-            parameters = listOf("Landroid/content/ContentResolver;", "Ljava/lang/String;",
-                "Ljava/lang/String;", "Lbb/E;"), returnType = "Landroid/net/Uri;",
-        ).method
-        val insns = saver.implementation!!.instructions
-        val index = insns.indexOfFirst {
-            (it as? ReferenceInstruction)?.reference.toString() == "Lbb/E;->a()[B"
-        }
-        check(index >= 0 && insns[index + 1].opcode == Opcode.MOVE_RESULT_OBJECT &&
-            (insns[index + 2] as? ReferenceInstruction)?.reference.toString() ==
-            "Ljava/io/FileOutputStream;->write([B)V") { "Image saver changed" }
-        saver.replaceInstruction(index, "invoke-virtual {p4}, Lbb/E;->O0()Lpb/g;")
-        saver.replaceInstruction(index + 1, "move-result-object p4")
-        saver.replaceInstruction(index + 2, "invoke-interface {p4}, Lpb/g;->X0()Ljava/io/InputStream;")
-        saver.addInstructions(index + 3, """
-            move-result-object p4
-            invoke-static {p4, v0}, Llocal/arca/StreamCopy;->copy(Ljava/io/InputStream;Ljava/io/OutputStream;)V
-        """.trimIndent())
-    }
 }
 
 /** The Plus build uses a private MediaStore saver; its legacy saver already streams. */
