@@ -1,10 +1,10 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "patches": [
     {
-      "name": "분석 수집·백그라운드 작업 축소",
-      "description": "분석·충돌·세션 수집과 측정 서비스·작업을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
+      "name": "Morphe 설정·광고·화면 전환",
+      "description": "앱 설정에 Morphe 설정을 추가합니다. 앱 이미지 광고 제거와 가벼운 화면 전환을 앱에서 조절할 수 있습니다.",
       "default": true,
       "category": null,
       "dependencies": [
@@ -63,11 +63,13 @@
       "options": []
     },
     {
-      "name": "앱 광고 요청·영역 제거",
-      "description": "앱의 /api/v1/pagead 요청과 ¡Hola! 기본 광고 영역을 제거합니다. 이용자 게시물과 텍스트 광고는 유지합니다.",
+      "name": "분석 수집·백그라운드 작업 축소",
+      "description": "분석·충돌·세션 수집과 측정 서비스·작업을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
       "default": true,
       "category": null,
-      "dependencies": [],
+      "dependencies": [
+        "ResourcePatch"
+      ],
       "compatiblePackages": [
         {
           "packageName": "live.arca.android.playstore",
