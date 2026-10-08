@@ -2,6 +2,7 @@ package dev.lumi.arca
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
 import app.morphe.patcher.patch.ApkFileType
 import app.morphe.patcher.patch.AppTarget
@@ -9,10 +10,14 @@ import app.morphe.patcher.patch.Compatibility
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.patch.resourcePatch
 import app.morphe.patcher.util.proxy.mutableTypes.MutableAnnotation
+import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.AnnotationVisibility
 import com.android.tools.smali.dexlib2.Opcode
+import com.android.tools.smali.dexlib2.iface.instruction.FiveRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.NarrowLiteralInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableAnnotation
 import org.w3c.dom.Element
 
@@ -95,7 +100,7 @@ private val morpheSettingsManifestPatch = resourcePatch {
 @Suppress("unused")
 val appAdsPatch = bytecodePatch(
     name = "Morphe 설정·광고·스프링 전환",
-    description = "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동을 유지하면서 스프링의 보이지 않는 끝부분 그리기를 줄입니다.",
+    description = "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동에 스프링을 적용하고, 이동 중 반복되는 화면 배치 계산을 줄입니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
@@ -208,7 +213,7 @@ val appAdsPatch = bytecodePatch(
                 "Navigation animation changed: $name"
             }
             nav.replaceInstruction(easing, "const v1, 0x3f800000")
-            nav.replaceInstruction(easing + 1, "const v2, 0x44960000")
+            nav.replaceInstruction(easing + 1, "const v2, 0x44160000")
             nav.replaceInstruction(easing + 2, "const/4 v3, 0x1")
             nav.replaceInstruction(easing + 3,
                 "invoke-static {v3, v3}, Lb1/q;->a(II)J")
@@ -219,6 +224,87 @@ val appAdsPatch = bytecodePatch(
             nav.replaceInstruction(tween + 1,
                 "invoke-static {v1, v2, v3}, Ls/k;->k(FFLjava/lang/Object;)Ls/m0;")
         }
+
+        // Only defer the slide when it cannot affect the measured size or
+        // alignment animation. The existing layer still handles fade/scale.
+        // No timer, fixed refresh rate, extra layer, or per-frame reflection.
+        val layerApi = classDefBy("Landroidx/compose/ui/graphics/c;")
+        for ((name, parameters, result) in listOf(
+            Triple("D", emptyList(), "F"), Triple("A", emptyList(), "F"),
+            Triple("l", listOf("F"), "V"), Triple("h", listOf("F"), "V"),
+        )) {
+            check(layerApi.methods.any {
+                it.name == name && it.parameterTypes.map(CharSequence::toString) == parameters &&
+                    it.returnType == result
+            }) { "Graphics layer API changed: $name" }
+        }
+        val layerImpl = classDefBy("Landroidx/compose/ui/graphics/d;")
+        for ((setter, getter, field) in listOf(
+            Triple("l", "D", "D"), Triple("h", "A", "E"),
+        )) {
+            val fieldRef = "Landroidx/compose/ui/graphics/d;->$field:F"
+            for (name in listOf(setter, getter)) {
+                check(layerImpl.methods.singleOrNull { it.name == name }?.implementation?.instructions?.any {
+                    (it as? ReferenceInstruction)?.reference.toString() == fieldRef
+                } == true) { "Layer translation mapping changed: $name" }
+            }
+        }
+        check(classDefBy("Lc8/l;").methods.any {
+            it.name == "d" && it.parameterTypes.toString() == "[Ljava/lang/Object;]" &&
+                it.returnType == "Ljava/lang/Object;"
+        } && classDefBy("LV/H1;").methods.any {
+            it.name == "getValue" && it.parameterTypes.isEmpty() && it.returnType == "Ljava/lang/Object;"
+        } && classDefBy("Lb1/p;").methods.any {
+            it.name == "o" && it.parameterTypes.isEmpty() && it.returnType == "J"
+        }) { "Slide layer compile-only API changed" }
+        val measure = Fingerprint(
+            definingClass = "Landroidx/compose/animation/h;", name = "b",
+            parameters = listOf("LF0/M;", "LF0/G;", "J"), returnType = "LF0/K;",
+        ).method
+        val measureInsns = measure.implementation!!.instructions
+        val slideField = measureInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Landroidx/compose/animation/h;->P:Ls/t0\$a;"
+        }
+        val slideRead = (slideField + 1 until measureInsns.size).firstOrNull {
+            (measureInsns[it] as? ReferenceInstruction)?.reference.toString() ==
+                "LV/H1;->getValue()Ljava/lang/Object;"
+        } ?: error("Slide state read changed")
+        val layerCall = measureInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "Lr/p;->a()Lc8/l;"
+        }
+        check(slideField >= 0 && measure.implementation!!.registerCount == 24 &&
+            (measureInsns[slideField] as? TwoRegisterInstruction)?.let {
+                it.registerA == 1 && it.registerB == 0
+            } == true && layerCall >= 0 &&
+            (measureInsns[layerCall + 1] as? OneRegisterInstruction)?.registerA == 12 &&
+            (measureInsns[slideRead] as? FiveRegisterInstruction)?.let {
+                it.registerCount == 1 && it.registerC == 1
+            } == true &&
+            measureInsns[slideRead + 1].opcode == Opcode.MOVE_RESULT_OBJECT &&
+            (measureInsns[slideRead + 1] as? OneRegisterInstruction)?.registerA == 1 &&
+            (measureInsns[slideRead + 2] as? ReferenceInstruction)?.reference.toString() == "Lb1/p;" &&
+            (measureInsns[slideRead + 2] as? OneRegisterInstruction)?.registerA == 1 &&
+            (measureInsns[slideRead + 3] as? ReferenceInstruction)?.reference.toString() == "Lb1/p;->o()J" &&
+            (measureInsns[slideRead + 3] as? FiveRegisterInstruction)?.registerC == 1 &&
+            measureInsns[slideRead + 4].opcode == Opcode.MOVE_RESULT_WIDE &&
+            (measureInsns[slideRead + 4] as? OneRegisterInstruction)?.registerA == 1 &&
+            measureInsns[slideRead + 5].opcode == Opcode.GOTO) {
+            "Slide measurement layout changed"
+        }
+        measure.addInstructionsWithLabels(slideRead, """
+            iget-object v3, v0, Landroidx/compose/animation/h;->N:Ls/t0${'$'}a;
+            if-nez v3, :morphe_measure_slide
+            iget-object v3, v0, Landroidx/compose/animation/h;->O:Ls/t0${'$'}a;
+            if-nez v3, :morphe_measure_slide
+            invoke-static {v1, v12}, Llocal/arca/SlideLayer;->wrap(LV/H1;Lc8/l;)Lc8/l;
+            move-result-object v12
+            const-wide/16 v1, 0x0
+            goto :morphe_slide_ready
+        """.trimIndent(),
+            ExternalLabel("morphe_measure_slide", measureInsns[slideRead]),
+            ExternalLabel("morphe_slide_ready", measureInsns[slideRead + 5]),
+        )
     }
 }
 

@@ -1,10 +1,10 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "patches": [
     {
       "name": "Morphe 설정·광고·스프링 전환",
-      "description": "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동을 유지하면서 스프링의 보이지 않는 끝부분 그리기를 줄입니다.",
+      "description": "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동에 스프링을 적용하고, 이동 중 반복되는 화면 배치 계산을 줄입니다.",
       "default": true,
       "category": null,
       "dependencies": [
