@@ -15,13 +15,24 @@ import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.immutable.ImmutableAnnotation
 import org.w3c.dom.Element
 
-private val arca = Compatibility(
-    name = "Arca Live",
+private val arcaPlay = Compatibility(
+    name = "Arca Live (Play Store)",
     packageName = "live.arca.android.playstore",
     apkFileType = ApkFileType.APK,
     appIconColor = 0x303C70,
     targets = listOf(
         AppTarget(version = "0.9.35185", isExperimental = true),
+        AppTarget(version = null, isExperimental = true),
+    ),
+)
+
+private val arcaPlus = Compatibility(
+    name = "Arca Live Plus",
+    packageName = "live.arca.android",
+    apkFileType = ApkFileType.APK,
+    appIconColor = 0x303C70,
+    targets = listOf(
+        AppTarget(version = "0.9.32768", isExperimental = true),
         AppTarget(version = null, isExperimental = true),
     ),
 )
@@ -36,6 +47,7 @@ private val trackerManifestPatch = resourcePatch {
                 val permission = permissions.item(index) as Element
                 val name = permission.getAttribute("android:name")
                 if (name == "com.google.android.gms.permission.AD_ID" ||
+                    name == "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE" ||
                     name.startsWith("android.permission.ACCESS_ADSERVICES_")) {
                     root.removeChild(permission)
                 }
@@ -56,6 +68,23 @@ private val trackerManifestPatch = resourcePatch {
                 element.setAttribute("android:name", name)
                 element.setAttribute("android:value", value)
             }
+            // Disable the analytics-only entry points, while preserving Firebase
+            // Messaging and Remote Config for notifications and app settings.
+            val measurementComponents = setOf(
+                "com.google.android.gms.measurement.AppMeasurementReceiver",
+                "com.google.android.gms.measurement.AppMeasurementService",
+                "com.google.android.gms.measurement.AppMeasurementJobService",
+                "com.google.firebase.sessions.SessionLifecycleService",
+            )
+            listOf("receiver", "service").forEach { tag ->
+                val components = app.getElementsByTagName(tag)
+                for (index in 0 until components.length) {
+                    val component = components.item(index) as Element
+                    if (component.getAttribute("android:name") in measurementComponents) {
+                        component.setAttribute("android:enabled", "false")
+                    }
+                }
+            }
         }
     }
 }
@@ -63,37 +92,43 @@ private val trackerManifestPatch = resourcePatch {
 /** The page image ad is distinct from user-submitted posts and the text-ad API. */
 @Suppress("unused")
 val appAdsPatch = bytecodePatch(
-    name = "앱 광고 요청 제거",
-    description = "앱의 /api/v1/pagead 요청을 시작하지 않습니다. 이용자 게시물과 텍스트 광고는 유지합니다.",
+    name = "앱 광고 요청·영역 제거",
+    description = "앱의 /api/v1/pagead 요청과 ¡Hola! 기본 광고 영역을 제거합니다. 이용자 게시물과 텍스트 광고는 유지합니다.",
     default = true,
 ) {
-    compatibleWith(arca)
+    compatibleWith(arcaPlay, arcaPlus)
     execute {
         Fingerprint(
             definingClass = "LVa/d;", name = "b",
             parameters = listOf("I", "LS7/e;"), returnType = "Ljava/lang/Object;",
         ).method.addInstructions(0, "const/4 v0, 0x0\nreturn-object v0")
+        Fingerprint(
+            definingClass = "LJ9/d;", name = "d",
+            parameters = listOf("Llive/arca/android/model/api/Ad;", "Z", "J",
+                "Lc8/a;", "Lc8/a;", "LV/n;", "I", "I"),
+            returnType = "V",
+        ).method.addInstructions(0, "return-void")
     }
 }
 
 @Suppress("unused")
 val trackerReductionPatch = bytecodePatch(
-    name = "분석 수집 축소",
-    description = "Firebase 분석·충돌·세션 수집을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
+    name = "분석 수집·백그라운드 작업 축소",
+    description = "분석·충돌·세션 수집과 측정 서비스·작업을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
     default = true,
 ) {
-    compatibleWith(arca)
+    compatibleWith(arcaPlay, arcaPlus)
     dependsOn(trackerManifestPatch)
 }
 
 /** Only the image download endpoint is switched to streaming. */
 @Suppress("unused")
 val streamingDownloadPatch = bytecodePatch(
-    name = "이미지 저장 스트리밍",
+    name = "이미지 저장 스트리밍 (플레이스토어)",
     description = "이미지를 통째로 메모리에 읽지 않고 작은 버퍼로 저장합니다. 저장 속도 개선량은 네트워크 상태에 따라 다릅니다.",
     default = true,
 ) {
-    compatibleWith(arca)
+    compatibleWith(arcaPlay)
     extendWith("extensions/extension.mpe")
     execute {
         val endpoint = Fingerprint(
@@ -118,6 +153,48 @@ val streamingDownloadPatch = bytecodePatch(
         check(index >= 0 && insns[index + 1].opcode == Opcode.MOVE_RESULT_OBJECT &&
             (insns[index + 2] as? ReferenceInstruction)?.reference.toString() ==
             "Ljava/io/FileOutputStream;->write([B)V") { "Image saver changed" }
+        saver.replaceInstruction(index, "invoke-virtual {p4}, Lbb/E;->O0()Lpb/g;")
+        saver.replaceInstruction(index + 1, "move-result-object p4")
+        saver.replaceInstruction(index + 2, "invoke-interface {p4}, Lpb/g;->X0()Ljava/io/InputStream;")
+        saver.addInstructions(index + 3, """
+            move-result-object p4
+            invoke-static {p4, v0}, Llocal/arca/StreamCopy;->copy(Ljava/io/InputStream;Ljava/io/OutputStream;)V
+        """.trimIndent())
+    }
+}
+
+/** The Plus build uses a private MediaStore saver; its legacy saver already streams. */
+@Suppress("unused")
+val streamingDownloadPlusPatch = bytecodePatch(
+    name = "이미지 저장 스트리밍 (플러스)",
+    description = "플러스 앱의 MediaStore 이미지 저장을 작은 버퍼로 처리합니다. 저장 속도 개선량은 네트워크 상태에 따라 다릅니다.",
+    default = true,
+) {
+    compatibleWith(arcaPlus)
+    extendWith("extensions/extension.mpe")
+    execute {
+        val endpoint = Fingerprint(
+            definingClass = "LN8/a;", name = "c",
+            parameters = listOf("Ljava/lang/String;", "LS7/e;"),
+            returnType = "Ljava/lang/Object;",
+        ).method
+        check(endpoint.annotations.none { it.type == "LXb/w;" }) { "Download endpoint already streams" }
+        endpoint.annotations.add(MutableAnnotation(
+            ImmutableAnnotation(AnnotationVisibility.RUNTIME, "LXb/w;", emptyList())
+        ))
+
+        val saver = Fingerprint(
+            definingClass = "LYa/i;", name = "b",
+            parameters = listOf("Landroid/content/ContentResolver;", "Ljava/lang/String;",
+                "Ljava/lang/String;", "Lbb/E;"), returnType = "Landroid/net/Uri;",
+        ).method
+        val insns = saver.implementation!!.instructions
+        val index = insns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "Lbb/E;->a()[B"
+        }
+        check(index >= 0 && insns[index + 1].opcode == Opcode.MOVE_RESULT_OBJECT &&
+            (insns[index + 2] as? ReferenceInstruction)?.reference.toString() ==
+            "Ljava/io/FileOutputStream;->write([B)V") { "Plus image saver changed" }
         saver.replaceInstruction(index, "invoke-virtual {p4}, Lbb/E;->O0()Lpb/g;")
         saver.replaceInstruction(index + 1, "move-result-object p4")
         saver.replaceInstruction(index + 2, "invoke-interface {p4}, Lpb/g;->X0()Ljava/io/InputStream;")

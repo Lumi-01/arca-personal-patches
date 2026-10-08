@@ -1,10 +1,10 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "patches": [
     {
-      "name": "분석 수집 축소",
-      "description": "Firebase 분석·충돌·세션 수집을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
+      "name": "분석 수집·백그라운드 작업 축소",
+      "description": "분석·충돌·세션 수집과 측정 서비스·작업을 비활성화하고 광고 식별자 권한을 제거합니다. 푸시 알림은 유지합니다.",
       "default": true,
       "category": null,
       "dependencies": [
@@ -13,7 +13,7 @@
       "compatiblePackages": [
         {
           "packageName": "live.arca.android.playstore",
-          "name": "Arca Live",
+          "name": "Arca Live (Play Store)",
           "description": null,
           "apkFileType": "APK",
           "appIconColor": "#303C70",
@@ -34,20 +34,44 @@
               "description": null
             }
           ]
+        },
+        {
+          "packageName": "live.arca.android",
+          "name": "Arca Live Plus",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#303C70",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "0.9.32768",
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
         }
       ],
       "options": []
     },
     {
-      "name": "앱 광고 요청 제거",
-      "description": "앱의 /api/v1/pagead 요청을 시작하지 않습니다. 이용자 게시물과 텍스트 광고는 유지합니다.",
+      "name": "앱 광고 요청·영역 제거",
+      "description": "앱의 /api/v1/pagead 요청과 ¡Hola! 기본 광고 영역을 제거합니다. 이용자 게시물과 텍스트 광고는 유지합니다.",
       "default": true,
       "category": null,
       "dependencies": [],
       "compatiblePackages": [
         {
           "packageName": "live.arca.android.playstore",
-          "name": "Arca Live",
+          "name": "Arca Live (Play Store)",
           "description": null,
           "apkFileType": "APK",
           "appIconColor": "#303C70",
@@ -68,12 +92,70 @@
               "description": null
             }
           ]
+        },
+        {
+          "packageName": "live.arca.android",
+          "name": "Arca Live Plus",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#303C70",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "0.9.32768",
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
         }
       ],
       "options": []
     },
     {
-      "name": "이미지 저장 스트리밍",
+      "name": "이미지 저장 스트리밍 (플러스)",
+      "description": "플러스 앱의 MediaStore 이미지 저장을 작은 버퍼로 처리합니다. 저장 속도 개선량은 네트워크 상태에 따라 다릅니다.",
+      "default": true,
+      "category": null,
+      "dependencies": [],
+      "compatiblePackages": [
+        {
+          "packageName": "live.arca.android",
+          "name": "Arca Live Plus",
+          "description": null,
+          "apkFileType": "APK",
+          "appIconColor": "#303C70",
+          "signatures": null,
+          "targets": [
+            {
+              "version": "0.9.32768",
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            },
+            {
+              "version": null,
+              "versionCodes": null,
+              "isExperimental": true,
+              "minSdk": null,
+              "description": null
+            }
+          ]
+        }
+      ],
+      "options": []
+    },
+    {
+      "name": "이미지 저장 스트리밍 (플레이스토어)",
       "description": "이미지를 통째로 메모리에 읽지 않고 작은 버퍼로 저장합니다. 저장 속도 개선량은 네트워크 상태에 따라 다릅니다.",
       "default": true,
       "category": null,
@@ -81,7 +163,7 @@
       "compatiblePackages": [
         {
           "packageName": "live.arca.android.playstore",
-          "name": "Arca Live",
+          "name": "Arca Live (Play Store)",
           "description": null,
           "apkFileType": "APK",
           "appIconColor": "#303C70",
