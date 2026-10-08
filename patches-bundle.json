@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-09T04:30:40",
-  "description": "Arca Live Plus patches: in-app app-ad switch, spring slide with shorter invisible draw tail, analytics reduction, and streaming media saves; user ads remain",
-  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.4/patches-0.3.4.mpp",
+  "created_at": "2026-10-08T20:05:08",
+  "description": "Arca Live Plus: spring slide with deferred layer position, app-ad switch, analytics reduction and streaming media saves; 120 Hz emulator tested; phone performance unverified",
+  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.5/patches-0.3.5.mpp",
   "signature_download_url": "",
-  "version": "0.3.4"
+  "version": "0.3.5"
 }
