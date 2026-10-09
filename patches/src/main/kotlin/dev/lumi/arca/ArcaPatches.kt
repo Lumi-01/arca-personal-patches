@@ -4,6 +4,7 @@ import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
 import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import app.morphe.patcher.extensions.InstructionExtensions.removeInstructions
 import app.morphe.patcher.patch.ApkFileType
 import app.morphe.patcher.patch.AppTarget
 import app.morphe.patcher.patch.Compatibility
@@ -144,6 +145,133 @@ val appAdsPatch = bytecodePatch(
                 invoke-static {p0}, Llocal/arca/MorphePrefs;->init(Landroid/content/Context;)V
                 invoke-static {p0}, Llocal/arca/BodyWebViewCache;->init(Landroid/content/Context;)V
             """.trimIndent())
+
+        // Keep the original remember inputs and formatter, but run finite DOM
+        // work after remembering on one worker. Observe its state in this same
+        // group; forgotten/abandoned groups cancel their queued work.
+        val articleLayout = Fingerprint(definingClass = "Lu9/t;", name = "l",
+            parameters = listOf("Ljava/lang/String;", "J", "Ljava/lang/Long;", "Z", "Z",
+                "Lq9/a;", "Lu9/p0;", "Lc8/l;", "Lc8/q;", "Lc8/l;", "LV/n;", "I"),
+            returnType = "V").method
+        val articleInsns = articleLayout.implementation!!.instructions
+        val prepareHtml = articleInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "LYa/n;->j(Ljava/lang/String;Ljava/util/List;Z)LN7/u;"
+        }
+        check(prepareHtml >= 0 && (articleInsns[prepareHtml] as? FiveRegisterInstruction)?.let {
+            it.registerCount == 4 && it.registerC == 10 && it.registerD == 2 &&
+                it.registerE == 3 && it.registerF == 7
+        } == true &&
+            articleInsns[prepareHtml + 1].opcode == Opcode.MOVE_RESULT_OBJECT &&
+            (articleInsns[prepareHtml + 1] as? OneRegisterInstruction)?.registerA == 14 &&
+            (articleInsns[prepareHtml + 2] as? ReferenceInstruction)?.reference.toString() ==
+                "LV/n;->M(Ljava/lang/Object;)V" &&
+            articleInsns[prepareHtml + 3].opcode == Opcode.CHECK_CAST &&
+            (articleInsns[prepareHtml + 3] as? ReferenceInstruction)?.reference.toString() == "LN7/u;" &&
+            (articleInsns[prepareHtml + 3] as? OneRegisterInstruction)?.registerA == 14 &&
+            (articleInsns[prepareHtml + 4] as? ReferenceInstruction)?.reference.toString() == "LV/n;->L()V") {
+            "Article HTML remember group changed"
+        }
+        check(classDefBy("LV/Z0;").methods.map { it.name }.containsAll(listOf("b", "c", "d")) &&
+            classDefBy("LV/n;").methods.any { it.name == "V" && it.parameterTypes == listOf("I") && it.returnType == "V" } &&
+            classDefBy("LV/n;").methods.any { it.name == "h" && it.parameterTypes.isEmpty() && it.returnType == "Ljava/lang/Object;" } &&
+            classDefBy("LV/C;").interfaces.contains("LV/Z0;") &&
+            classDefBy("LV/C;").methods.single { it.name == "d" }.implementation!!.instructions
+                .all { it.opcode == Opcode.RETURN_VOID } &&
+            classDefBy("LV/w1;").methods.any { it.name == "h" &&
+                it.parameterTypes == listOf("Ljava/lang/Object;", "LV/v1;") && it.returnType == "LV/w0;" } &&
+            classDefBy("LV/w0;").methods.any { it.name == "setValue" } &&
+            classDefBy("LN7/u;").methods.any { it.name == "<init>" &&
+                it.parameterTypes == listOf("Ljava/lang/Object;", "Ljava/lang/Object;") }) {
+            "Article Compose state/remember API changed"
+        }
+        articleLayout.replaceInstruction(prepareHtml,
+            "invoke-static {v2, v3, v7}, Llocal/arca/PreparedBody;->prepare(Ljava/lang/String;Ljava/util/List;Z)Ljava/lang/Object;")
+        // Replace the shared branch target itself, so both fresh and remembered
+        // objects pass through the state read instead of casting the holder.
+        articleLayout.replaceInstruction(prepareHtml + 3,
+            "invoke-static {v14}, Llocal/arca/PreparedBody;->value(Ljava/lang/Object;)LN7/u;")
+        articleLayout.addInstructions(prepareHtml + 4, "move-result-object v14")
+
+        // The stock eager ternary serializes the same DOM twice and builds the
+        // expand-images button even when it is not selected. Keep one HTML
+        // result and build the original button only for the original condition.
+        val formatter = Fingerprint(definingClass = "LYa/n;", name = "j",
+            parameters = listOf("Ljava/lang/String;", "Ljava/util/List;", "Z"),
+            returnType = "LN7/u;").method
+        val formatInsns = formatter.implementation!!.instructions
+        val button = formatInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "LYa/n;->i(Z)Ljava/lang/String;"
+        }
+        val formatStart = button - 2
+        val formatEnd = button + 15
+        val serializer = "LYa/o;->a(LNb/f;)Ljava/lang/String;"
+        check(button >= 2 && formatEnd < formatInsns.size &&
+            (formatInsns[formatStart] as? ReferenceInstruction)?.reference.toString() ==
+                "Ljava/lang/Boolean;->valueOf(Z)Ljava/lang/Boolean;" &&
+            (formatInsns[formatStart] as? FiveRegisterInstruction)?.registerC == 10 &&
+            (formatInsns[button] as? FiveRegisterInstruction)?.let {
+                it.registerC == 0 && it.registerD == 1
+            } == true &&
+            listOf(button + 2, button + 10).all { index ->
+                (formatInsns[index] as? ReferenceInstruction)?.reference.toString() == serializer &&
+                    (formatInsns[index] as? FiveRegisterInstruction)?.registerC == 6
+            } &&
+            (formatInsns[button + 12] as? ReferenceInstruction)?.reference.toString() ==
+                "LKa/g;->a(Ljava/lang/Boolean;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;" &&
+            (formatInsns[button + 12] as? FiveRegisterInstruction)?.let {
+                it.registerC == 2 && it.registerD == 3 && it.registerE == 4
+            } == true && formatInsns[button + 14].opcode == Opcode.CHECK_CAST &&
+            (formatInsns[formatEnd] as? ReferenceInstruction)?.reference.toString() == "<iframe" &&
+            formatInsns.subList(formatStart, formatEnd).none {
+                it.opcode.name.startsWith("IF_") || it.opcode.name.startsWith("GOTO")
+            }) { "Article HTML selection changed" }
+        // Preserve the first instruction's identity for existing incoming labels.
+        val htmlReady = formatInsns[formatEnd]
+        formatter.replaceInstruction(formatStart, "invoke-static {v6}, $serializer")
+        formatter.removeInstructions(formatStart + 1, formatEnd - formatStart - 1)
+        formatter.addInstructionsWithLabels(formatStart + 1, """
+            move-result-object v2
+            if-eqz v10, :morphe_html_ready
+            invoke-direct {v0, v1}, LYa/n;->i(Z)Ljava/lang/String;
+            move-result-object v3
+            new-instance v5, Ljava/lang/StringBuilder;
+            invoke-direct {v5}, Ljava/lang/StringBuilder;-><init>()V
+            invoke-virtual {v5, v3}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v5, v2}, Ljava/lang/StringBuilder;->append(Ljava/lang/String;)Ljava/lang/StringBuilder;
+            invoke-virtual {v5}, Ljava/lang/StringBuilder;->toString()Ljava/lang/String;
+            move-result-object v2
+        """.trimIndent(), ExternalLabel("morphe_html_ready", htmlReady))
+
+        // Native WebView construction must also stay out of the first incoming
+        // slide. Remember that this body has shown so pausing on exit doesn't
+        // remove its content while it is sliding away.
+        val bodyLayout = Fingerprint(definingClass = "LA9/g;", name = "g",
+            parameters = listOf("Ljava/lang/String;", "Ljava/lang/String;", "Z", "I",
+                "Lc8/l;", "Lc8/l;", "Lu9/p0;", "LV/n;", "I"), returnType = "V").method
+        val bodyInsns = bodyLayout.implementation!!.instructions
+        val bodyStart = bodyInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "LV/n;->s(I)LV/n;"
+        }
+        val bodyEnd = bodyInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "LV/n;->z()LV/e1;"
+        }
+        check(bodyLayout.implementation!!.registerCount == 27 && bodyStart >= 0 && bodyEnd > bodyStart &&
+            (bodyInsns[bodyStart + 1] as? OneRegisterInstruction)?.registerA == 12 &&
+            bodyInsns[bodyStart + 2].opcode == Opcode.AND_INT_LIT8 &&
+            (bodyInsns[bodyEnd] as? FiveRegisterInstruction)?.registerC == 6 &&
+            bodyInsns.take(bodyStart).any { (it as? TwoRegisterInstruction)?.let { instruction ->
+                it.opcode == Opcode.MOVE_FROM16 && instruction.registerA == 0 && instruction.registerB == 20
+            } == true }) { "Article body restart group changed" }
+        bodyLayout.addInstructionsWithLabels(bodyStart + 2, """
+            invoke-static {v12, v0}, Llocal/arca/BodyGate;->allow(LV/n;Z)Z
+            move-result v3
+            if-nez v3, :morphe_body_visible
+            move-object v6, v12
+            goto/16 :morphe_body_end
+        """.trimIndent(),
+            ExternalLabel("morphe_body_visible", bodyInsns[bodyStart + 2]),
+            ExternalLabel("morphe_body_end", bodyInsns[bodyEnd]))
 
         // Reuse only an empty article WebView from this exact foreground
         // Context. The original factory still binds fresh listeners/settings.
