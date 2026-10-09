@@ -1,6 +1,6 @@
 {
   "created_at": "2026-10-09T04:27:28",
-  "description": "Arca Live Plus: single-pass body serialization, skip empty preparation and finite background HTML worker with in-app control; retained spring slides, app-ad control, analytics reduction and streaming saves; emulator tested; whole-app CPU and phone performance unmeasured",
+  "description": "Arca Live Plus: single-pass body serialization, skip empty preparation and finite background HTML worker with in-app control; retained spring slides, app-ad control, analytics reduction and streaming saves; short emulator CPU comparison documented; phone performance and battery savings unmeasured",
   "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.7/patches-0.3.7.mpp",
   "signature_download_url": "",
   "version": "0.3.7"
