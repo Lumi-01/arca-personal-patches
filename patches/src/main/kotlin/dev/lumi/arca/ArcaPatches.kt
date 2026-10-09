@@ -100,7 +100,7 @@ private val morpheSettingsManifestPatch = resourcePatch {
 @Suppress("unused")
 val appAdsPatch = bytecodePatch(
     name = "Morphe 설정·광고·스프링 전환",
-    description = "앱 설정에 광고 제어를 추가합니다. 원본 좌우 이동에 스프링을 적용하고, 이동 중 반복되는 화면 배치 계산을 줄입니다.",
+    description = "앱 설정에 광고·본문 표시 제어를 추가합니다. 원본 이동에 스프링을 적용하고 반복 배치 계산과 본문 뷰 준비를 줄입니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
@@ -140,7 +140,141 @@ val appAdsPatch = bytecodePatch(
         }
         check(superCall >= 0) { "Application initialization changed" }
         appOnCreate.addInstructions(superCall + 1,
-            "invoke-static {p0}, Llocal/arca/MorphePrefs;->init(Landroid/content/Context;)V")
+            """
+                invoke-static {p0}, Llocal/arca/MorphePrefs;->init(Landroid/content/Context;)V
+                invoke-static {p0}, Llocal/arca/BodyWebViewCache;->init(Landroid/content/Context;)V
+            """.trimIndent())
+
+        // Reuse only an empty article WebView from this exact foreground
+        // Context. The original factory still binds fresh listeners/settings.
+        val bodyFactory = Fingerprint(definingClass = "LA9/g;", name = "i",
+            parameters = listOf("I", "Lc8/l;", "Lc8/l;", "Ln4/c;", "Ljava/lang/String;",
+                "Lu9/p0;", "LV/w0;", "Landroid/content/Context;"), returnType = "LDa/c;").method
+        val factoryInsns = bodyFactory.implementation!!.instructions
+        val createBody = factoryInsns.indexOfFirst {
+            it.opcode == Opcode.NEW_INSTANCE &&
+                (it as? ReferenceInstruction)?.reference.toString() == "LDa/c;"
+        }
+        val constructBody = factoryInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "LDa/c;-><init>(Landroid/content/Context;Landroid/util/AttributeSet;IILd8/k;)V"
+        }
+        check(bodyFactory.implementation!!.registerCount == 17 && createBody >= 0 &&
+            constructBody == createBody + 5 &&
+            (factoryInsns[createBody - 2] as? TwoRegisterInstruction)?.let {
+                it.registerA == 2 && it.registerB == 16
+            } == true &&
+            (factoryInsns[createBody] as? OneRegisterInstruction)?.registerA == 1 &&
+            (factoryInsns[constructBody + 1] as? TwoRegisterInstruction)?.let {
+                it.registerA == 0 && it.registerB == 1
+            } == true && factoryInsns.any {
+                (it as? ReferenceInstruction)?.reference.toString() == "LDa/c;->d(ILDa/c${'$'}a;)V"
+            }) { "Article WebView factory changed" }
+        bodyFactory.addInstructionsWithLabels(createBody, """
+            invoke-static {v2}, Llocal/arca/BodyWebViewCache;->take(Landroid/content/Context;)Landroid/webkit/WebView;
+            move-result-object v1
+            if-eqz v1, :morphe_create_body
+            check-cast v1, LDa/c;
+            goto :morphe_bind_body
+        """.trimIndent(),
+            ExternalLabel("morphe_create_body", factoryInsns[createBody]),
+            ExternalLabel("morphe_bind_body", factoryInsns[constructBody + 1]),
+        )
+
+        // The HTML cache and callback belong to the previous Article screen.
+        // Clear them inside their declaring class before releasing the view.
+        check(classDefBy("LDa/c;").fields.any { it.name == "D" && it.type == "LDa/c${'$'}a;" } &&
+            classDefBy("LDa/c;").fields.any { it.name == "E" && it.type == "Ljava/lang/String;" }) {
+            "Article WebView state changed"
+        }
+        val configureBody = Fingerprint(definingClass = "LDa/c;", name = "d",
+            parameters = listOf("I", "LDa/c${'$'}a;"), returnType = "V").method
+        val updateBody = Fingerprint(definingClass = "LDa/c;", name = "f",
+            parameters = listOf("Ljava/lang/String;", "Z"), returnType = "V").method
+        check(configureBody.implementation!!.instructions.any {
+            (it as? ReferenceInstruction)?.reference.toString() == "webViewTunnel"
+        } && updateBody.implementation!!.instructions.any {
+            (it as? ReferenceInstruction)?.reference.toString() == "LDa/c;->E:Ljava/lang/String;"
+        } && updateBody.implementation!!.instructions.any {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Landroid/webkit/WebView;->loadDataWithBaseURL(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)V"
+        }) { "Article HTML cache or JavaScript binding changed" }
+        // This flag is the stock observeResumeAsState result. Navigation keeps
+        // an incoming entry below RESUMED while its transition runs. Avoid
+        // loading a paused page under that moving layer; no fixed delay/timer.
+        check(classDefBy("LEa/d;").methods.any { method ->
+            method.implementation?.instructions?.any {
+                (it as? ReferenceInstruction)?.reference.toString()
+                    ?.contains("observeResumeAsState (LifecycleUtils.kt:") == true
+            } == true
+        } && classDefBy("Lu9/t;").methods.any { method ->
+            method.implementation?.instructions?.any {
+                (it as? ReferenceInstruction)?.reference.toString()
+                    ?.startsWith("LEa/d;->c(Landroidx/lifecycle/m;") == true
+            } == true
+        }) { "Article resumed-state source changed" }
+        val updateInsns = updateBody.implementation!!.instructions
+        val htmlRead = updateInsns.indexOfFirst {
+            it.opcode == Opcode.IGET_OBJECT && (it as? ReferenceInstruction)?.reference.toString() ==
+                "LDa/c;->E:Ljava/lang/String;"
+        }
+        check(htmlRead >= 0 && updateBody.implementation!!.registerCount == 10) {
+            "Article HTML update registers changed"
+        }
+        updateBody.addInstructionsWithLabels(htmlRead, """
+            invoke-static {}, Llocal/arca/MorphePrefs;->reuseBodyView()Z
+            move-result v0
+            if-eqz v0, :morphe_load_html
+            if-nez p2, :morphe_load_html
+            sget-object v0, LDa/d;->a:LDa/d;
+            invoke-virtual {v0, p0}, LDa/d;->b(Landroid/webkit/WebView;)V
+            return-void
+        """.trimIndent(), ExternalLabel("morphe_load_html", updateInsns[htmlRead]))
+        val detachBody = Fingerprint(definingClass = "LDa/c;", name = "onDetachedFromWindow",
+            parameters = emptyList(), returnType = "V").method
+        val detachInsns = detachBody.implementation!!.instructions
+        val destroyBody = detachInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "LDa/d;->a(Landroid/webkit/WebView;)V"
+        }
+        check(detachBody.implementation!!.registerCount == 2 && destroyBody >= 0 &&
+            (detachInsns[destroyBody] as? FiveRegisterInstruction)?.let {
+                it.registerCount == 2 && it.registerC == 0 && it.registerD == 1
+            } == true) { "Article WebView destruction changed" }
+        detachBody.replaceInstruction(destroyBody,
+            "invoke-virtual {v0, p0}, LDa/d;->b(Landroid/webkit/WebView;)V")
+        detachBody.addInstructions(destroyBody + 1, """
+            const/4 v0, 0x0
+            iput-object v0, p0, LDa/c;->D:LDa/c${'$'}a;
+            const-string v0, ""
+            iput-object v0, p0, LDa/c;->E:Ljava/lang/String;
+            invoke-static {p0}, Llocal/arca/BodyWebViewCache;->release(Landroid/webkit/WebView;)V
+        """.trimIndent())
+
+        // The existing set records which WebViews have already resumed. Keep
+        // first resume, every pause and global-timer handling unchanged.
+        val resume = Fingerprint(definingClass = "LDa/d;", name = "c",
+            parameters = listOf("Landroid/webkit/WebView;"), returnType = "V").method
+        val resumeInsns = resume.implementation!!.instructions
+        val resumeCall = resumeInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "Landroid/webkit/WebView;->onResume()V"
+        }
+        check(resume.implementation!!.registerCount == 4 && resumeCall >= 0 &&
+            classDefBy("LDa/d;").fields.any { it.name == "b" && it.type == "Ljava/util/HashSet;" } &&
+            resumeInsns.any { (it as? ReferenceInstruction)?.reference.toString() ==
+                "Ljava/util/HashSet;->add(Ljava/lang/Object;)Z" } &&
+            resumeInsns.any { (it as? ReferenceInstruction)?.reference.toString() ==
+                "Landroid/webkit/WebView;->resumeTimers()V" }) { "WebView lifecycle tracking changed" }
+        resume.addInstructionsWithLabels(resumeCall, """
+            sget-object v0, LDa/d;->b:Ljava/util/HashSet;
+            invoke-virtual {p1}, Ljava/lang/Object;->hashCode()I
+            move-result v1
+            invoke-static {v1}, Ljava/lang/Integer;->valueOf(I)Ljava/lang/Integer;
+            move-result-object v1
+            invoke-virtual {v0, v1}, Ljava/util/HashSet;->contains(Ljava/lang/Object;)Z
+            move-result v0
+            if-eqz v0, :morphe_first_resume
+            return-void
+        """.trimIndent(), ExternalLabel("morphe_first_resume", resumeInsns[resumeCall]))
 
         val settingsContent = Fingerprint(
             definingClass = "Lva/K${'$'}b;", name = "s",

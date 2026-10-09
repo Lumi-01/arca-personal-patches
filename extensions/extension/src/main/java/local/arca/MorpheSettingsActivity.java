@@ -65,6 +65,10 @@ public final class MorpheSettingsActivity extends Activity {
         toggle(body, "앱 광고 요청·영역 제거",
                 "앱 자체의 이미지 광고와 빈 영역을 숨깁니다. 이용자 광고 글과 텍스트 광고는 유지합니다.",
                 MorphePrefs.blockAds(), MorphePrefs::setBlockAds);
+        section(body, "본문 표시");
+        toggle(body, "본문 표시 최적화",
+                "다른 글을 열 때 본문 표시 준비를 줄입니다. 글을 미리 내려받지 않으며, 앱을 벗어나거나 메모리가 부족하면 보관한 본문 뷰를 해제합니다.",
+                MorphePrefs.reuseBodyView(), MorphePrefs::setReuseBodyView);
         section(body, "패치 시 적용되는 기능");
         info(body, "분석 수집·백그라운드 작업 축소",
                 "Morphe에서 이 패치를 선택한 경우 설치 시 적용됩니다. 변경하려면 다시 빌드하세요.");
