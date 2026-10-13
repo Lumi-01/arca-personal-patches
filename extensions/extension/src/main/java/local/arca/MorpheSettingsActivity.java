@@ -69,10 +69,6 @@ public final class MorpheSettingsActivity extends Activity {
         toggle(body, "본문 표시 최적화",
                 "빈 본문 처리를 생략하고 HTML 준비를 별도 스레드에서 처리합니다. 본문 뷰는 하나만 재사용하며 화면 전환 후 표시를 시작합니다. 끄면 다음 글부터 원래 준비 방식으로 돌아갑니다. 글을 미리 내려받지 않습니다.",
                 MorphePrefs.reuseBodyView(), MorphePrefs::setReuseBodyView);
-        section(body, "텍스트 표시");
-        toggle(body, "텍스트 높이 호환성 개선",
-                "글꼴 상태나 줄 방향이 바뀌면 텍스트 높이를 다시 계산합니다. 댓글과 작성 시간이 겹치는 원인이 될 수 있는 이전 높이 재사용을 보완합니다. 변경 후 앱을 완전히 종료하고 다시 실행하세요.",
-                MorphePrefs.configuredTextLayoutCompat(), MorphePrefs::setTextLayoutCompat);
         section(body, "패치 시 적용되는 기능");
         info(body, "분석 수집·백그라운드 작업 축소",
                 "Morphe에서 이 패치를 선택한 경우 설치 시 적용됩니다. 변경하려면 다시 빌드하세요.");

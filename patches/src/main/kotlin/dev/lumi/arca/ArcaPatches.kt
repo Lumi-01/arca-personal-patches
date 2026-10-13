@@ -105,7 +105,7 @@ val appAdsPatch = bytecodePatch(
     default = true,
 ) {
     compatibleWith(arcaPlus)
-    dependsOn(morpheSettingsManifestPatch, textLayoutCompatPatch)
+    dependsOn(morpheSettingsManifestPatch)
     extendWith("extensions/extension.mpe")
     execute {
         Fingerprint(
