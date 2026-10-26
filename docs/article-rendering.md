@@ -74,3 +74,9 @@ Android 15 x86_64 AVD, 호스트 GPU, Android 표시율 120Hz, 실제 프레임 
 8. `A9.g.g`의 본문 restart 그룹과 종료 콜백, 첫 진입/퇴장 시 resumed-state의 의미.
 
 새 버전에서는 상태 의미까지 다시 확인한다. 같은 이름의 boolean이라고만 보고 로딩을 미루면 안 된다. 글 전환·뒤로 가기·이미지/동영상·다운로드·댓글·배경 복귀·회전·글꼴/테마 변경·저메모리 상태를 확인하고, 이전 글의 내용이나 콜백이 다음 글에 남지 않는지 확인한다. 순정 앱의 구버전이나 미래 버전을 자동으로 지원한다고 보장하지 않는다.
+
+## 0.3.11 discarded article work
+
+The existing remember observer cancels its FutureTask when the article leaves composition, but DOM transformation previously continued until return. The worker now registers its exact Thread identity with `BodyWork`; injected checkpoints run before media-loop iteration and serialization. Only that interrupted worker throws a private no-stack Error signal, so the formatter's broad Exception fallback cannot turn cancellation into more formatting. The already-cancelled FutureTask contains the signal. Bytecode validation rejects broader catch handlers. Unrelated interrupted threads and active tasks continue normally. No polling, prefetch, download cancellation or playback pause is introduced. Parsing itself is not made interruptible.
+
+Run `scripts/check-body-work.py` with JAVA_HOME. Host checks cover active work, stopping a cancelled FutureTask and leaving an unrelated interrupted thread alone. This establishes cancellation behavior, not a measured percentage CPU reduction.

@@ -243,6 +243,32 @@ val appAdsPatch = bytecodePatch(
             move-result-object v2
         """.trimIndent(), ExternalLabel("morphe_html_ready", htmlReady))
 
+        // A disposed article already cancels its FutureTask. Stop heavy DOM work
+        // cooperatively, rather than finishing work whose result can no longer show.
+        check(formatter.implementation!!.tryBlocks.flatMap { it.exceptionHandlers }
+            .all { it.exceptionType == "Ljava/lang/Exception;" }) {
+            "Formatter cancellation fallback handlers changed"
+        }
+        val cancelInsns = formatter.implementation!!.instructions
+        val cancellationPoints = cancelInsns.indices.filter { index ->
+            val ref = (cancelInsns[index] as? ReferenceInstruction)?.reference.toString()
+            ref == "Ljava/util/Iterator;->hasNext()Z" || ref == serializer
+        }
+        check(cancellationPoints.size in 4..10) { "Formatter loop checkpoints changed" }
+        cancellationPoints.asReversed().forEach { index ->
+            val call = cancelInsns[index] as? FiveRegisterInstruction
+                ?: error("Formatter checkpoint invoke changed")
+            val ref = (cancelInsns[index] as ReferenceInstruction).reference.toString()
+            val original = if (ref == serializer) "invoke-static {v${call.registerC}}, $serializer"
+                else "invoke-interface {v${call.registerC}}, $ref"
+            // Keep incoming loop branches on the checkpoint and preserve the
+            // original invoke immediately before its move-result instruction.
+            formatter.replaceInstruction(index,
+                "invoke-static {}, Llocal/arca/BodyWork;->checkpoint()V")
+            formatter.addInstructions(index + 1, original)
+        }
+        formatter.addInstructions(0, "invoke-static {}, Llocal/arca/BodyWork;->checkpoint()V")
+
         // Native WebView construction must also stay out of the first incoming
         // slide. Remember that this body has shown so pausing on exit doesn't
         // remove its content while it is sliding away.
