@@ -1,6 +1,6 @@
 {
   "created_at": "2026-10-13T14:54:23",
-  "description": "Recovery rollback to v0.3.7 app patch logic: removes withdrawn v0.3.8 text-cache changes and option after startup failure report; source validation retained; runtime verification skipped and comment overlap unresolved",
+  "description": "Experimental Arca Live Plus text-height candidate fix; label-safe font/cache invalidation; Android 15 launch and rapid-scroll smoke checks",
   "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.9/patches-0.3.9.mpp",
   "signature_download_url": "",
   "version": "0.3.9"
