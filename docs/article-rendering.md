@@ -80,3 +80,7 @@ Android 15 x86_64 AVD, 호스트 GPU, Android 표시율 120Hz, 실제 프레임 
 The existing remember observer cancels its FutureTask when the article leaves composition, but DOM transformation previously continued until return. The worker now registers its exact Thread identity with `BodyWork`; injected checkpoints run before media-loop iteration and serialization. Only that interrupted worker throws a private no-stack Error signal, so the formatter's broad Exception fallback cannot turn cancellation into more formatting. The already-cancelled FutureTask contains the signal. Bytecode validation rejects broader catch handlers. Unrelated interrupted threads and active tasks continue normally. No polling, prefetch, download cancellation or playback pause is introduced. Parsing itself is not made interruptible.
 
 Run `scripts/check-body-work.py` with JAVA_HOME. Host checks cover active work, stopping a cancelled FutureTask and leaving an unrelated interrupted thread alone. This establishes cancellation behavior, not a measured percentage CPU reduction.
+
+### 0.3.12 rollback
+
+The 0.3.11 cancellation implementation above is historical and is no longer active. Its hooks, helper and worker registration were removed at the user's request after the CPU comparison failed to show an overall saving. The 0.3.10 application logic and existing text-height candidate remain.

@@ -18,7 +18,7 @@ The [Morphe Gradle setup](https://github.com/MorpheApp/morphe-patcher/blob/main/
 ./gradlew :patches:buildAndroid generatePatchesList
 ```
 
-The resulting bundle is `patches/build/libs/patches-0.3.11.mpp`. In Morphe Manager, add `https://github.com/Lumi-01/arca-personal-patches` as a [patch source](https://github.com/MorpheApp/morphe-manager/blob/main/docs/patch-sources.md) and patch your own copy of the app. The experimental [v0.3.11 release](https://github.com/Lumi-01/arca-personal-patches/releases/tag/v0.3.11) supplies the bundle directly. Morphe's signature differs from the publisher's, so installing over the stock app may require backing up local data and uninstalling it first. Keep the same Morphe signing key for future patched updates.
+The resulting bundle is `patches/build/libs/patches-0.3.12.mpp`. In Morphe Manager, add `https://github.com/Lumi-01/arca-personal-patches` as a [patch source](https://github.com/MorpheApp/morphe-manager/blob/main/docs/patch-sources.md) and patch your own copy of the app. The experimental [v0.3.12 release](https://github.com/Lumi-01/arca-personal-patches/releases/tag/v0.3.12) supplies the bundle directly. Morphe's signature differs from the publisher's, so installing over the stock app may require backing up local data and uninstalling it first. Keep the same Morphe signing key for future patched updates.
 
 When publishing a new `patches-bundle.json`, keep `created_at` in Morphe's local date-time format (`YYYY-MM-DDTHH:mm:ss`, without `Z` or an offset). Morphe Manager 1.34.0 cannot parse a UTC suffix in this field and then reports that the bundle could not be downloaded.
 
@@ -47,3 +47,7 @@ Adds restart-applied **댓글·본문 글자 높이 보정** under Morphe settin
 Android 15 emulator: signed patched app installed and launched; channel/article and mixed text/image comments loaded; 20 rapid swipes were checked at normal font scale and another 20 at 1.4× scale with no crash or visible overlap in the inspected viewport. The user's intermittent device-specific symptom was not independently reproduced before the fix, so this remains a candidate, not a confirmed cure for every overlap. No CPU/battery gain is claimed. See [text layout notes](docs/text-layout.md).
 
 Version 0.3.11 adds cooperative cancellation checkpoints to the background article formatter. When a discarded article has already cancelled its FutureTask, media-loop and serialization checkpoints stop work whose result cannot be shown. Active article output, synchronous formatting, downloads and media playback are unchanged. Cancellation cannot interrupt the HTML parser midway; it takes effect at the next checkpoint. The existing body-optimization switch controls the worker path. The 0.3.10 text-height candidate remains included. No new whole-app CPU or battery percentage has been measured.
+
+## 0.3.12 CPU-change rollback
+
+At the user's request, the 0.3.11 cooperative formatter-cancellation hooks, BodyWork helper and its worker registration are removed. App patch/extension source returns to the 0.3.10 baseline; advertising removal, streaming saves, existing body-view reuse and the text-height candidate fix remain. The 0.3.11 CPU comparison did not demonstrate an overall reduction. Image-download improvements are being investigated separately and are not included in this rollback release.

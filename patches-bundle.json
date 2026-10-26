@@ -1,6 +1,6 @@
 {
   "created_at": "2026-10-26T16:45:58",
-  "description": "Experimental Arca Plus: cooperatively cancel discarded article formatting; text-height candidate retained; no quantified new CPU claim",
+  "description": "Experimental Arca Plus: restore 0.3.10 runtime behavior; latest CPU cancellation change reverted; text-height candidate retained",
   "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.11/patches-0.3.11.mpp",
   "signature_download_url": "",
   "version": "0.3.11"

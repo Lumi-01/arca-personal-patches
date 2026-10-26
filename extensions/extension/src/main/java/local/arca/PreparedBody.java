@@ -25,7 +25,6 @@ public final class PreparedBody implements Z0 {
                     Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                     runnable.run();
                 }, "ArcaBodyHtml");
-                BodyWork.workerCreated(thread);
                 thread.setDaemon(true);
                 return thread;
             });
