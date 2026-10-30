@@ -147,13 +147,21 @@ internal val textLayoutCompatPatch = bytecodePatch {
             mutableClassDefBy(type).fields.add(ImmutableField(type, "morpheLayoutIntrinsics", cache.intrinsicsType,
                 AccessFlags.PRIVATE.value, null, null, null).toMutable())
 
-            // Recompute intrinsic height at measurement time. Even a current font
-            // object can have a height cached by an earlier intrinsic-only pass.
-            // Keep the completed paragraph/layout caches and draw path unchanged.
+            // Keep valid intrinsic measurements; invalidate only changed fonts/direction.
+            // Unconditional recomputation in 0.3.14 did not resolve the reported overlap.
+            val invoke = if (type == "LN/e;") "invoke-virtual" else "invoke-interface"
             intrinsic.addInstructionsWithLabels(0, """
                 invoke-static {}, Llocal/arca/MorphePrefs;->textLayoutCompat()Z
                 move-result v0
                 if-eqz v0, :morphe_original_height
+                iget-object v0, p0, $intrinsics
+                if-eqz v0, :morphe_invalidate_height
+                iget-object v1, p0, $direction
+                if-ne p2, v1, :morphe_invalidate_height
+                $invoke {v0}, $fontCheck
+                move-result v0
+                if-eqz v0, :morphe_original_height
+                :morphe_invalidate_height
                 const/4 v0, -0x1
                 iput v0, p0, $width
                 iput v0, p0, $height

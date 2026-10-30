@@ -9,10 +9,12 @@ public final class MorphePrefs {
     private static final String ADS = "block_app_ads";
     private static final String BODY = "reuse_body_view";
     private static final String TEXT = "text_layout_compat";
+    private static final String OFFSET = "sync_body_offset";
     private static volatile SharedPreferences preferences;
     private static volatile boolean blockAds = true;
     private static volatile boolean reuseBodyView = true;
     private static volatile boolean textLayoutCompat = true;
+    private static volatile boolean syncBodyOffset = true;
 
     private MorphePrefs() { }
 
@@ -24,12 +26,25 @@ public final class MorphePrefs {
         blockAds = prefs.getBoolean(ADS, true);
         reuseBodyView = prefs.getBoolean(BODY, true);
         textLayoutCompat = prefs.getBoolean(TEXT, true);
+        syncBodyOffset = prefs.getBoolean(OFFSET, true);
         preferences = prefs;
     }
 
     public static boolean blockAds() { return blockAds; }
     public static boolean reuseBodyView() { return reuseBodyView; }
     public static boolean textLayoutCompat() { return textLayoutCompat; }
+    public static boolean syncBodyOffset() { return syncBodyOffset; }
+
+    public static boolean configuredSyncBodyOffset() {
+        SharedPreferences prefs = preferences;
+        return prefs == null ? syncBodyOffset : prefs.getBoolean(OFFSET, true);
+    }
+
+    public static void setSyncBodyOffset(boolean enabled) {
+        // Keep the composition's collector/remember branch stable until restart.
+        SharedPreferences prefs = preferences;
+        if (prefs != null) prefs.edit().putBoolean(OFFSET, enabled).apply();
+    }
 
     public static boolean configuredTextLayoutCompat() {
         SharedPreferences prefs = preferences;

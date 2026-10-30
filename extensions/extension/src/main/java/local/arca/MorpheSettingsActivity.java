@@ -66,6 +66,9 @@ public final class MorpheSettingsActivity extends Activity {
                 "앱 자체의 이미지 광고와 빈 영역을 숨깁니다. 이용자 광고 글과 텍스트 광고는 유지합니다.",
                 MorphePrefs.blockAds(), MorphePrefs::setBlockAds);
         section(body, "본문 표시");
+        toggle(body, "빠른 스크롤 시 본문 위치 보정",
+                "본문 위치를 현재 스크롤과 높이에 맞춰 계산합니다. 빠르게 내릴 때 본문이 댓글 위에 남는 현상을 줄이기 위한 시험 보정입니다. 변경 후 앱을 완전히 종료하고 다시 열어 주세요.",
+                MorphePrefs.configuredSyncBodyOffset(), MorphePrefs::setSyncBodyOffset);
         toggle(body, "본문 표시 최적화",
                 "빈 본문 처리를 생략하고 HTML 준비를 별도 스레드에서 처리합니다. 본문 뷰는 하나만 재사용하며 화면 전환 후 표시를 시작합니다. 끄면 다음 글부터 원래 준비 방식으로 돌아갑니다. 글을 미리 내려받지 않습니다.",
                 MorphePrefs.reuseBodyView(), MorphePrefs::setReuseBodyView);

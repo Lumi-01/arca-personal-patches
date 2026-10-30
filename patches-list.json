@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.14",
+  "version": "0.3.15",
   "patches": [
     {
       "name": "Morphe 설정·광고·스프링 전환",
@@ -9,6 +9,7 @@
       "category": null,
       "dependencies": [
         "ResourcePatch",
+        "BytecodePatch",
         "BytecodePatch"
       ],
       "compatiblePackages": [

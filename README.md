@@ -18,7 +18,13 @@ The [Morphe Gradle setup](https://github.com/MorpheApp/morphe-patcher/blob/main/
 ./gradlew :patches:buildAndroid generatePatchesList
 ```
 
-The resulting bundle is `patches/build/libs/patches-0.3.14.mpp`. In Morphe Manager, add `https://github.com/Lumi-01/arca-personal-patches` as a [patch source](https://github.com/MorpheApp/morphe-manager/blob/main/docs/patch-sources.md) and patch your own copy of the app. The experimental [v0.3.14 release](https://github.com/Lumi-01/arca-personal-patches/releases/tag/v0.3.14) supplies the bundle directly. Morphe's signature differs from the publisher's, so installing over the stock app may require backing up local data and uninstalling it first. Keep the same Morphe signing key for future patched updates.
+The resulting bundle is `patches/build/libs/patches-0.3.15.mpp`. In Morphe Manager, add `https://github.com/Lumi-01/arca-personal-patches` as a [patch source](https://github.com/MorpheApp/morphe-manager/blob/main/docs/patch-sources.md) and patch your own copy of the app. The experimental [v0.3.15 release](https://github.com/Lumi-01/arca-personal-patches/releases/tag/v0.3.15) supplies the bundle directly. Morphe's signature differs from the publisher's, so installing over the stock app may require backing up local data and uninstalling it first. Keep the same Morphe signing key for future patched updates.
+
+## 0.3.15 body-position candidate
+
+The user still reports overlap after 0.3.14. **빠른 스크롤 시 본문 위치 보정** reads the sticky article body's list index, scroll offset and measured height from the consumer's current Compose snapshot, instead of collecting a combination of three asynchronous snapshot flows. The original position formula, WebView, comment layout and media handling remain. This switch defaults on and takes effect after restarting the app. The original collector is used when it is off. The unused WhileSubscribed flow is not collected when enabled; its construction is retained for bytecode compatibility. No timer or extra polling loop is added.
+
+The unconditional intrinsic-text-height recalculation added in 0.3.14 is rolled back to font/direction-based invalidation, since it did not resolve the report. The font-scale cache check remains. This is a candidate correction, not a confirmed fix: runtime reproduction tests remain stopped at the user's request. Build and APK patch-application checks do not establish runtime behavior or battery savings. See [analysis and verification limits](docs/body-position.md).
 
 When publishing a new `patches-bundle.json`, keep `created_at` in Morphe's local date-time format (`YYYY-MM-DDTHH:mm:ss`, without `Z` or an offset). Morphe Manager 1.34.0 cannot parse a UTC suffix in this field and then reports that the bundle could not be downloaded.
 
