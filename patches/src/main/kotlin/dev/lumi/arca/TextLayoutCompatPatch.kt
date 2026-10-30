@@ -42,6 +42,36 @@ internal val textLayoutCompatPatch = bytecodePatch {
                 "LN/c;->j:LN/c;"
         }) { "Shared min-lines cache setter changed" }
 
+        // The vendor's min-lines cache compares density but omits fontScale.
+        // Check BOTH its per-node and shared-cache return paths before reuse.
+        val minLinesFactory = Fingerprint(definingClass = "LN/c${'$'}a;", name = "a",
+            parameters = listOf("LN/c;", "Lb1/v;", "LO0/U;", "Lb1/e;", "LT0/h${'$'}b;"),
+            returnType = "LN/c;").method
+        val factoryInsns = minLinesFactory.implementation!!.instructions
+        val cachedReturns = factoryInsns.indices.filter {
+            factoryInsns[it].opcode == Opcode.RETURN_OBJECT &&
+                (factoryInsns[it] as? com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction)?.registerA == 8
+        }
+        check(minLinesFactory.implementation!!.registerCount == 13 && cachedReturns.size == 2 &&
+            cachedReturns.all { it + 1 < factoryInsns.size }) { "Min-lines cache reuse changed" }
+        for (index in cachedReturns.reversed()) {
+            minLinesFactory.addInstructionsWithLabels(index, """
+                invoke-static {}, Llocal/arca/MorphePrefs;->textLayoutCompat()Z
+                move-result v0
+                if-eqz v0, :morphe_keep_min_lines
+                invoke-interface {p4}, Lb1/e;->L0()F
+                move-result v0
+                invoke-virtual {p1}, LN/c;->d()Lb1/e;
+                move-result-object v1
+                invoke-interface {v1}, Lb1/e;->L0()F
+                move-result v1
+                cmpg-float v0, v0, v1
+                if-nez v0, :morphe_next_min_lines
+            """.trimIndent(),
+                ExternalLabel("morphe_keep_min_lines", factoryInsns[index]),
+                ExternalLabel("morphe_next_min_lines", factoryInsns[index + 1]))
+        }
+
         for (cache in caches) {
             val type = cache.type
             val definition = classDefBy(type)
@@ -62,7 +92,6 @@ internal val textLayoutCompatPatch = bytecodePatch {
             val minLines = "$type->${cache.minLines}:LN/c;"
             val layout = "$type->${cache.layoutField}:${cache.layoutType}"
             val fontCheck = "${cache.intrinsicsType}->b()Z"
-            val invoke = if (type == "LN/e;") "invoke-virtual" else "invoke-interface"
             check(classDefBy(cache.intrinsicsType).methods.any {
                 it.name == "b" && it.parameterTypes.isEmpty() && it.returnType == "Z"
             }) { "Stale-font API changed: $type" }
@@ -118,19 +147,13 @@ internal val textLayoutCompatPatch = bytecodePatch {
             mutableClassDefBy(type).fields.add(ImmutableField(type, "morpheLayoutIntrinsics", cache.intrinsicsType,
                 AccessFlags.PRIVATE.value, null, null, null).toMutable())
 
-            // A width alone cannot validate height after font resolution/direction changes.
+            // Recompute intrinsic height at measurement time. Even a current font
+            // object can have a height cached by an earlier intrinsic-only pass.
+            // Keep the completed paragraph/layout caches and draw path unchanged.
             intrinsic.addInstructionsWithLabels(0, """
                 invoke-static {}, Llocal/arca/MorphePrefs;->textLayoutCompat()Z
                 move-result v0
                 if-eqz v0, :morphe_original_height
-                iget-object v0, p0, $intrinsics
-                if-eqz v0, :morphe_invalidate_height
-                iget-object v1, p0, $direction
-                if-ne p2, v1, :morphe_invalidate_height
-                $invoke {v0}, $fontCheck
-                move-result v0
-                if-eqz v0, :morphe_original_height
-                :morphe_invalidate_height
                 const/4 v0, -0x1
                 iput v0, p0, $width
                 iput v0, p0, $height
