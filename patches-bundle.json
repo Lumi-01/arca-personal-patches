@@ -1,7 +1,7 @@
 {
-  "created_at": "2026-10-30T18:20:23",
+  "created_at": "2026-10-30T19:18:49",
   "description": "Experimental Arca Plus: latest CPU cancellation change reverted; coalesce media file writes; text-height candidate retained",
-  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.14/patches-0.3.14.mpp",
+  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.15/patches-0.3.15.mpp",
   "signature_download_url": "",
-  "version": "0.3.14"
+  "version": "0.3.15"
 }
