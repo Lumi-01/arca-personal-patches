@@ -22,6 +22,7 @@ public final class PreparedBody implements Z0 {
     private static final ThreadPoolExecutor WORKER = new ThreadPoolExecutor(
             0, 1, 10, TimeUnit.SECONDS, new LinkedBlockingQueue<>(), runnable -> {
                 Thread thread = new Thread(() -> {
+                    BodyWork.workerCreated(Thread.currentThread());
                     Process.setThreadPriority(Process.THREAD_PRIORITY_BACKGROUND);
                     runnable.run();
                 }, "ArcaBodyHtml");

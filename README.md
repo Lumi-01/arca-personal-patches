@@ -63,3 +63,7 @@ Version 0.3.11 adds cooperative cancellation checkpoints to the background artic
 At the user's request, the 0.3.11 cooperative formatter-cancellation hooks, BodyWork helper and its worker registration are removed. App patch/extension source returns to the 0.3.10 baseline; advertising removal, streaming saves, existing body-view reuse and the text-height candidate fix remain. The 0.3.11 CPU comparison did not demonstrate an overall reduction. Image-download improvements are being investigated separately and are not included in this rollback release.
 
 Version 0.3.13 improves media output buffering only. The 0.3.11 formatter cancellation hooks remain removed, as in 0.3.12. Run `python scripts/check-stream-copy.py` to check short reads, final flush, exact bytes and stream cleanup on read/write failure. No connection, DNS, retry, progress callback or download-queue behavior is changed.
+
+## 0.3.17 오류 처리 보완
+
+떠난 글의 취소된 본문 변환은 미디어 반복 처리와 직렬화 경계에서 종료합니다. 기존 작업자 하나와 취소 요청을 사용합니다. 이전에 되돌린 0.3.11의 협력적 취소 부분을 이번 오류 수정 요청에 따라 다시 도입했습니다. 파싱 자체를 즉시 중단하지는 못하며 전체 CPU·배터리 절감은 미측정입니다.
