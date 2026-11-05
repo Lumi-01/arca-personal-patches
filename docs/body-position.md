@@ -40,4 +40,3 @@ Plus 0.9.32768은 본문 WebView를 LazyColumn의 세 번째 stickyHeader로 유
 # Version filter regression
 
 The 0.3.16 bundle also applies all three patches, rebuilds and signs an otherwise identical baseline APK with its version name changed to `9.9.99999`, without force mode. This checks removal of the version-number filter, not compatibility with unknown future bytecode. No UI reproduction or battery measurement was performed for this release.
-
