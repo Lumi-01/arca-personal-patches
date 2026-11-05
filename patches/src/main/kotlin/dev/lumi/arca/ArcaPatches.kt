@@ -28,8 +28,7 @@ private val arcaPlus = Compatibility(
     apkFileType = ApkFileType.APK,
     appIconColor = 0x303C70,
     targets = listOf(
-        AppTarget(version = "0.9.32768", isExperimental = true),
-        AppTarget(version = null, isExperimental = true),
+        AppTarget(version = null),
     ),
 )
 

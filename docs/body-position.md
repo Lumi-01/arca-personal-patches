@@ -1,4 +1,18 @@
-# 0.3.15 본문 위치 보정 후보
+# 본문과 댓글의 배치 보정
+
+## 0.3.16 본문을 일반 목록 항목으로 배치
+
+사용자가 남은 현상을 **게시글 본문 이미지·내용이 댓글 위에 겹침**으로 확인했다. 0.3.15의 위치 값 동기화만으로 증상이 지속되어 본문의 stickyHeader 등록을 일반 item 등록으로 변경했다. 추가 이동량은 0으로 두어 본문과 댓글을 같은 LazyColumn의 배치 결과로 이동시킨다.
+
+본문 항목은 기존 Compose PinnableContainer로 유지한다. 화면 밖으로 스크롤했을 때도 현재 글의 WebView가 다시 생성되는 일을 피하도록 했으며, 글 화면의 composition이 종료되면 핀을 해제한다. 핀은 화면 고정이 아니라 항목의 composition 수명 유지에 사용된다. 동영상 재생과 복귀 시 상태 유지의 실기 동작은 확인이 필요하다.
+
+Morphe 설정의 **본문·댓글 겹침 방지**는 기존 `sync_body_offset` 저장값을 사용하며 기본 켜짐이다. 변경 후 앱을 재실행해야 한다. 꺼진 경우 원본 stickyHeader와 이동량 계산을 사용한다. `BodyOffset`을 제거하고 `BodyPin`으로 교체했다.
+
+패치 대상 버전은 제한 없는 단일 AppTarget으로 선언한다. 기존 혼합 선언이 사용하던 호환성 정보와 달리 구형 패처에서도 버전 번호로 제외되지 않도록 했다. 코드 구조 검사에서 실패한 버전은 대응 코드 검토가 필요하다.
+
+번들 빌드와 Plus 0.9.32768 원본 APK 패치 적용·재빌드·서명이 통과했다. 반복 화면 테스트 중지 요청을 유지하므로 실기 겹침 해결과 미디어 회귀 여부는 미확인이다.
+
+## 0.3.15 기록
 
 사용자는 0.3.14 이후에도 간헐적 겹침이 남는다고 보고했다. 특히 빠른 스크롤에서 빈도가 높다는 이전 설명을 바탕으로, 글자 높이와 별개인 본문 배치 경로를 검토했다. 현재 기기에서 동일 현상을 재현하거나 직접 원인을 확정한 것은 아니다.
 
@@ -23,3 +37,7 @@ Plus 0.9.32768은 본문 WebView를 LazyColumn의 세 번째 stickyHeader로 유
 사용자 요청에 따라 반복 UI/재현 테스트는 중지 상태를 유지한다. 이번 변경의 빌드와 기준 APK 패치 적용은 검사하지만 런타임·빠른 스크롤·미디어·댓글 회귀 확인과 CPU/배터리 측정은 수행하지 않는다. 문제가 지속되면 본문이 댓글 위에 남는 경우와 댓글 텍스트가 이웃 댓글을 침범하는 경우를 구분해야 한다.
 
 2026-10-31: Gradle `:patches:buildAndroid :patches:generatePatchesList` 성공. Morphe Desktop 1.18.1로 Plus 0.9.32768의 세 공개 패치 적용, APK 재빌드와 서명 성공(`failedPatches: []`). 생성한 0.3.15 APK는 에뮬레이터에 설치하지 않았다.
+# Version filter regression
+
+The 0.3.16 bundle also applies all three patches, rebuilds and signs an otherwise identical baseline APK with its version name changed to `9.9.99999`, without force mode. This checks removal of the version-number filter, not compatibility with unknown future bytecode. No UI reproduction or battery measurement was performed for this release.
+

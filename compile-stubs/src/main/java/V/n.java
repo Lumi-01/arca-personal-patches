@@ -6,4 +6,5 @@ public interface n {
     Object h();
     void M(Object value);
     void L();
+    Object o(w local);
 }

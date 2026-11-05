@@ -2,6 +2,9 @@ package dev.lumi.arca
 
 import app.morphe.patcher.Fingerprint
 import app.morphe.patcher.extensions.InstructionExtensions.addInstructionsWithLabels
+import app.morphe.patcher.extensions.InstructionExtensions.addInstructions
+import app.morphe.patcher.extensions.InstructionExtensions.replaceInstruction
+import com.android.tools.smali.dexlib2.iface.instruction.RegisterRangeInstruction
 import app.morphe.patcher.patch.bytecodePatch
 import app.morphe.patcher.util.smali.ExternalLabel
 import com.android.tools.smali.dexlib2.Opcode
@@ -10,7 +13,7 @@ import com.android.tools.smali.dexlib2.iface.instruction.OneRegisterInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.ReferenceInstruction
 import com.android.tools.smali.dexlib2.iface.instruction.TwoRegisterInstruction
 
-/** Keep the stock sticky WebView, but stop collecting asynchronous scroll-offset copies. */
+/** Replace the sticky overlay with a retained normal item and zero extra translation. */
 internal val bodyOffsetPatch = bytecodePatch {
     execute {
         val method = Fingerprint(definingClass = "Lu9/t;", name = "l",
@@ -38,11 +41,31 @@ internal val bodyOffsetPatch = bytecodePatch {
             invoke-static {}, Llocal/arca/MorphePrefs;->syncBodyOffset()Z
             move-result v6
             if-eqz v6, :morphe_original_offset
-            move-object/from16 v6, v32
-            invoke-static {v5, v6, v2}, Llocal/arca/BodyOffset;->state(LB/E;LV/s0;LV/n;)LV/H1;
+            invoke-static {}, Llocal/arca/BodyPin;->offset()LV/H1;
             move-result-object v29
             goto :morphe_offset_ready
         """.trimIndent(), ExternalLabel("morphe_original_offset", insns[collect]),
             ExternalLabel("morphe_offset_ready", insns[collect + 2]))
+
+        val scope = Fingerprint(definingClass = "Lu9/t${'$'}b${'$'}e${'$'}a${'$'}a;", name = "h", returnType = "LN7/M;").method
+        val scopeInsns = scope.implementation!!.instructions
+        val sticky = scopeInsns.indices.single {
+            (scopeInsns[it] as? ReferenceInstruction)?.reference.toString() ==
+                "LB/A;->c(LB/B;Ljava/lang/Object;Ljava/lang/Object;Lc8/q;ILjava/lang/Object;)V"
+        }
+        val range = scopeInsns[sticky] as RegisterRangeInstruction
+        check(range.registerCount == 6 && scopeInsns.take(sticky).count {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "LB/A;->a(LB/B;Ljava/lang/Object;Ljava/lang/Object;Lc8/q;ILjava/lang/Object;)V"
+        } == 2) { "Body item registration changed" }
+        scope.replaceInstruction(sticky, "invoke-static/range {v${range.startRegister} .. v${range.startRegister + 5}}, " +
+            "Llocal/arca/BodyPin;->item(LB/B;Ljava/lang/Object;Ljava/lang/Object;Lc8/q;ILjava/lang/Object;)V")
+
+        val content = Fingerprint(definingClass = "Lu9/t${'$'}b${'$'}e${'$'}a${'$'}a${'$'}c;", name = "f",
+            parameters = listOf("LB/d;", "LV/n;", "I"), returnType = "V").method
+        check(content.implementation!!.instructions.any {
+            (it as? ReferenceInstruction)?.reference.toString()?.startsWith("LA9/g;->g(") == true
+        }) { "Body composition changed" }
+        content.addInstructions(0, "invoke-static/range {p2 .. p2}, Llocal/arca/BodyPin;->retain(LV/n;)V")
     }
 }

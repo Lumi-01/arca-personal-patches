@@ -18,7 +18,11 @@ The [Morphe Gradle setup](https://github.com/MorpheApp/morphe-patcher/blob/main/
 ./gradlew :patches:buildAndroid generatePatchesList
 ```
 
-The resulting bundle is `patches/build/libs/patches-0.3.15.mpp`. In Morphe Manager, add `https://github.com/Lumi-01/arca-personal-patches` as a [patch source](https://github.com/MorpheApp/morphe-manager/blob/main/docs/patch-sources.md) and patch your own copy of the app. The experimental [v0.3.15 release](https://github.com/Lumi-01/arca-personal-patches/releases/tag/v0.3.15) supplies the bundle directly. Morphe's signature differs from the publisher's, so installing over the stock app may require backing up local data and uninstalling it first. Keep the same Morphe signing key for future patched updates.
+The resulting bundle is `patches/build/libs/patches-0.3.16.mpp`. In Morphe Manager, add `https://github.com/Lumi-01/arca-personal-patches` as a [patch source](https://github.com/MorpheApp/morphe-manager/blob/main/docs/patch-sources.md) and patch your own copy of the app. The experimental [v0.3.16 release](https://github.com/Lumi-01/arca-personal-patches/releases/tag/v0.3.16) supplies the bundle directly. Morphe's signature differs from the publisher's, so installing over the stock app may require backing up local data and uninstalling it first. Keep the same Morphe signing key for future patched updates.
+
+## 0.3.16 body and comment placement
+
+The remaining report concerns article images/content covering comments. The body now uses a normal LazyColumn item with zero additional translation. A Compose pin retains its composition while scrolling away, and is released when that composition ends. **본문·댓글 겹침 방지** controls the change after an app restart. Version-number filtering is removed for all three patches. Build and original-APK patch application pass. Runtime overlap resolution, scrolling/media behavior and battery impact remain unverified because reproduction testing is stopped at the user's request. [Implementation and verification scope](docs/body-position.md).
 
 ## 0.3.15 body-position candidate
 
