@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.21",
+  "version": "0.3.22",
   "patches": [
     {
       "name": "Morphe 설정·광고·스프링 전환",
@@ -35,7 +35,7 @@
     },
     {
       "name": "미디어 저장 스트리밍 (플러스)",
-      "description": "미디어를 스트리밍 저장하고, 과도한 진행률 갱신과 취소 후 실패 표시를 보완합니다.",
+      "description": "미디어 스트리밍 저장과 취소된 다운로드의 실패 표시를 보완합니다.",
       "default": true,
       "category": null,
       "dependencies": [],

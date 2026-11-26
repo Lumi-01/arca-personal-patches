@@ -609,7 +609,7 @@ val trackerReductionPatch = bytecodePatch(
 @Suppress("unused")
 val streamingDownloadPlusPatch = bytecodePatch(
     name = "미디어 저장 스트리밍 (플러스)",
-    description = "미디어를 스트리밍 저장하고, 과도한 진행률 갱신과 취소 후 실패 표시를 보완합니다.",
+    description = "미디어 스트리밍 저장과 취소된 다운로드의 실패 표시를 보완합니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
@@ -704,6 +704,32 @@ val streamingDownloadPlusPatch = bytecodePatch(
             parameters = listOf("Ljava/lang/Object;"), returnType = "Ljava/lang/Object;",
         ).method
         val queueInsns = queueCoroutine.implementation!!.instructions
+        val getUrl = queueInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Llive/arca/android/model/data/DownloadItem;->getUrl()Ljava/lang/String;"
+        }
+        check(getUrl >= 0) { "Download start point changed" }
+        queueCoroutine.addInstructions(getUrl, """
+            invoke-virtual {v2}, Llive/arca/android/model/data/DownloadItem;->getUuid()Ljava/lang/String;
+            move-result-object v7
+            invoke-static {v7}, Llocal/arca/DownloadCancelGate;->clear(Ljava/lang/String;)V
+        """.trimIndent())
+        val cancellationCheck = queueInsns.indexOfFirst {
+            it.opcode == Opcode.INSTANCE_OF &&
+                (it as? ReferenceInstruction)?.reference.toString() ==
+                    "Ljava/util/concurrent/CancellationException;"
+        }
+        check(cancellationCheck >= 0) { "Download cancellation path changed" }
+        queueCoroutine.addInstructionsWithLabels(cancellationCheck + 1, """
+            invoke-virtual {v4}, Llive/arca/android/model/data/DownloadItem;->getUuid()Ljava/lang/String;
+            move-result-object v6
+            invoke-static {v6}, Llocal/arca/DownloadCancelGate;->consume(Ljava/lang/String;)Z
+            move-result v6
+            if-eqz v6, :morphe_not_user_cancelled
+            sget-object v6, LN7/M;->a:LN7/M;
+            return-object v6
+            :morphe_not_user_cancelled
+        """.trimIndent())
         val failedState = queueInsns.indexOfFirst {
             (it as? ReferenceInstruction)?.reference.toString() ==
                 "Llive/arca/android/model/data/DownloadItem;->changeState(LJa/f;)Llive/arca/android/model/data/DownloadItem;"
@@ -724,6 +750,24 @@ val streamingDownloadPlusPatch = bytecodePatch(
             invoke-interface {v0, v3}, Lr8/A;->m(Ljava/lang/Object;)Z
             iget-object v2, v1, LQa/b${'$'}b;->H:LQa/b;
             invoke-static {v2}, LQa/b;->h(LQa/b;)V
+        """.trimIndent())
+
+        val cancelOne = Fingerprint(
+            definingClass = "LQa/b;", name = "k",
+            parameters = listOf("Ljava/lang/String;"), returnType = "V",
+        ).method
+        val clearActive = cancelOne.implementation!!.instructions.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "LQa/b;->k:Llive/arca/android/model/data/DownloadItem;"
+        }.let { fieldRead ->
+            if (fieldRead < 0) -1 else cancelOne.implementation!!.instructions.indexOfFirst {
+                (it as? ReferenceInstruction)?.reference.toString() ==
+                    "LQa/b;->k:Llive/arca/android/model/data/DownloadItem;" && it.opcode == Opcode.IPUT_OBJECT
+            }
+        }
+        check(clearActive >= 0) { "Active download cancel path changed" }
+        cancelOne.addInstructions(clearActive, """
+            invoke-static {v0}, Llocal/arca/DownloadCancelGate;->mark(Ljava/lang/String;)V
         """.trimIndent())
 
     }
