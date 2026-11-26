@@ -47,10 +47,8 @@ def validate(metadata):
         manifest = bundle.read("META-INF/MANIFEST.MF").decode().replace("\r", "")
         if not re.search(r"^Version: " + re.escape(version) + r"$", manifest, re.MULTILINE):
             raise ValueError("Source version differs from bundle manifest")
-        names = bundle.namelist()
-        if "classes.dex" not in names and not any(
-                name.startswith("dev/lumi/arca/") and name.endswith(".class") for name in names):
-            raise ValueError("Bundle has no Android patch classes")
+        if "classes.dex" not in bundle.namelist():
+            raise ValueError("Bundle has no Android patches in classes.dex")
     local = ROOT / "patches" / "build" / "libs" / f"patches-{version}.mpp"
     if local.exists() and hashlib.sha256(local.read_bytes()).hexdigest() != digest:
         raise ValueError("Local bundle differs from released asset")
