@@ -8,6 +8,8 @@ This repository contains experimental [Morphe](https://github.com/MorpheApp/morp
 - **분석 수집·백그라운드 작업 축소:** Sets Firebase Analytics, Crashlytics and Sessions collection flags to false, disables analytics-only measurement and session services/jobs, and removes advertising-ID and install-referrer permissions. Firebase Messaging and Remote Config remain for notifications and app settings. This avoids those background entry points but does not establish that every possible telemetry request is gone or quantify battery savings.
 - **미디어 저장 스트리밍:** Marks the media download endpoint as streaming and copies its response to the Android media file with bounded 64 KiB read and output buffers. The output buffer coalesces short network reads before writing to MediaStore; a deterministic 4 MiB + 17 byte test with 8 KiB reads reduces file writes from 513 to 65 while preserving every byte. This is a write-call reduction, not a measured network-speed increase. The Android 10+ save path is shared by image, GIF and video download items; the original path loaded the complete response as a byte array before writing it. The legacy Android saver already streams. The copy closes both streams if writing fails. Progress values are held below 100 until completion, preventing unknown-length chunked responses from overflowing the app's byte-to-percent calculation. If a request or save fails, the failed state is published and the next queued item is allowed to start. This reduces peak memory use and avoids waiting for Retrofit's full-body buffer before writing; it does not alter playback or previews. Network and server limits can still dominate elapsed time.
 
+The Plus download queue now reuses its configured OkHttp client across Retrofit instances, which can reuse DNS/TLS connections for later transfers to the same host. It does not make the first transfer or a slow server faster, and no throughput benchmark is claimed.
+
 The verified baseline is **Plus 0.9.32768** (`versionCode 122768`, original APK SHA-256 `0EBA2DCB598B9F3AB6720266DF1E4E822D3A9522AED43479F79AE3C8BA2E0AB4`, publisher signing certificate SHA-1 `D7F68DAD9E0C02DCF5A4167BE13E86B5E68696B5`). Later versions are marked experimental and each required class/method anchor is checked at patch time. Review and test every app update before use.
 
 ## Build and install
@@ -83,3 +85,4 @@ Version 0.3.13 improves media output buffering only. The 0.3.11 formatter cancel
 ## 0.3.17 오류 처리 보완
 
 떠난 글의 취소된 본문 변환은 미디어 반복 처리와 직렬화 경계에서 종료합니다. 기존 작업자 하나와 취소 요청을 사용합니다. 이전에 되돌린 0.3.11의 협력적 취소 부분을 이번 오류 수정 요청에 따라 다시 도입했습니다. 파싱 자체를 즉시 중단하지는 못하며 전체 CPU·배터리 절감은 미측정입니다.
+

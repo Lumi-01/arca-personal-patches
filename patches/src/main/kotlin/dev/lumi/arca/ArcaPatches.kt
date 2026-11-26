@@ -609,12 +609,50 @@ val trackerReductionPatch = bytecodePatch(
 @Suppress("unused")
 val streamingDownloadPlusPatch = bytecodePatch(
     name = "미디어 저장 스트리밍 (플러스)",
-    description = "미디어 스트리밍 저장과 취소된 다운로드의 실패 표시를 보완합니다.",
+    description = "미디어를 스트리밍 저장해 메모리와 파일 쓰기를 줄이고, 후속 다운로드에서 연결을 재사용합니다. 취소된 다운로드의 실패 표시도 보완합니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
     extendWith("extensions/extension.mpe")
     execute {
+        // Each Plus download currently builds a new Retrofit and OkHttp client.
+        // Keep the download API's first configured client so the serial queue can
+        // reuse its DNS cache and OkHttp connection pool between transfers. The
+        // per-download progress call adapter is attached to Retrofit separately.
+        val serviceFactory = Fingerprint(
+            definingClass = "LI8/a;", name = "f",
+            parameters = listOf("LUb/k${'$'}a;"), returnType = "Ljava/lang/Object;",
+        ).method
+        val factoryInsns = serviceFactory.implementation!!.instructions
+        // OkHttp's package is repackaged/obfuscated between Plus releases
+        // (for example, p025bb/z in one build and bb/z in another). Find the
+        // builder call by its shape and verify the receiver field agrees with
+        // the builder type before injecting anything.
+        val clientBuilderPattern = Regex("""^L(.+)\${'$'}a;->c\(\)L(.+);$""")
+        val clientBuilderMatches = factoryInsns.indices.mapNotNull { index ->
+            val reference = (factoryInsns[index] as? ReferenceInstruction)?.reference.toString()
+            val match = clientBuilderPattern.matchEntire(reference) ?: return@mapNotNull null
+            if (match.groupValues[1] != match.groupValues[2] || index == 0 ||
+                index + 1 >= factoryInsns.size ||
+                factoryInsns[index].opcode != Opcode.INVOKE_VIRTUAL ||
+                factoryInsns[index + 1].opcode != Opcode.MOVE_RESULT_OBJECT) return@mapNotNull null
+            val builderType = "L${match.groupValues[1]}\$a;"
+            val receiverField = factoryInsns[index - 1]
+            val fieldReference = (receiverField as? ReferenceInstruction)?.reference.toString()
+            if (receiverField.opcode != Opcode.IGET_OBJECT || !fieldReference.endsWith(":$builderType")) {
+                return@mapNotNull null
+            }
+            index to "L${match.groupValues[2]};"
+        }
+        check(clientBuilderMatches.size == 1) { "Download HTTP client construction changed" }
+        val (builtClient, clientType) = clientBuilderMatches.single()
+        serviceFactory.addInstructions(builtClient + 2, """
+            iget-object p0, p0, LI8/a;->a:Ljava/lang/Class;
+            invoke-static {p0, v1}, Llocal/arca/DownloadClientPool;->reuse(Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;
+            move-result-object v1
+            check-cast v1, $clientType
+        """.trimIndent())
+
         val progressCallback = Fingerprint(
             definingClass = "LM8/a${'$'}b;", name = "d",
             parameters = listOf("LM8/a;", "I"), returnType = "V",
@@ -714,21 +752,21 @@ val streamingDownloadPlusPatch = bytecodePatch(
             move-result-object v7
             invoke-static {v7}, Llocal/arca/DownloadCancelGate;->clear(Ljava/lang/String;)V
         """.trimIndent())
-        val cancellationCheck = queueInsns.indexOfFirst {
-            it.opcode == Opcode.INSTANCE_OF &&
-                (it as? ReferenceInstruction)?.reference.toString() ==
-                    "Ljava/util/concurrent/CancellationException;"
+        val unwrapFailure = queueInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "LN7/w;->e(Ljava/lang/Object;)Ljava/lang/Throwable;"
         }
-        check(cancellationCheck >= 0) { "Download cancellation path changed" }
-        queueCoroutine.addInstructionsWithLabels(cancellationCheck + 1, """
+        check(unwrapFailure >= 0 && queueInsns[unwrapFailure + 1].opcode == Opcode.MOVE_RESULT_OBJECT) {
+            "Download cancellation result handling changed"
+        }
+        // Null only the CancellationException associated with an explicit user
+        // cancel. This follows the coroutine's existing non-error completion path
+        // and avoids adding a branch label to a target instruction already labeled.
+        queueCoroutine.addInstructions(unwrapFailure + 2, """
             invoke-virtual {v4}, Llive/arca/android/model/data/DownloadItem;->getUuid()Ljava/lang/String;
-            move-result-object v6
-            invoke-static {v6}, Llocal/arca/DownloadCancelGate;->consume(Ljava/lang/String;)Z
-            move-result v6
-            if-eqz v6, :morphe_not_user_cancelled
-            sget-object v6, LN7/M;->a:LN7/M;
-            return-object v6
-            :morphe_not_user_cancelled
+            move-result-object v5
+            invoke-static {v5, v0}, Llocal/arca/DownloadCancelGate;->suppressUserCancelled(Ljava/lang/String;Ljava/lang/Throwable;)Ljava/lang/Throwable;
+            move-result-object v0
         """.trimIndent())
         val failedState = queueInsns.indexOfFirst {
             (it as? ReferenceInstruction)?.reference.toString() ==
