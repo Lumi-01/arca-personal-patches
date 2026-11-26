@@ -1,8 +1,7 @@
 {
-  "created_at": "2026-11-26T17:24:35",
+  "created_at": "2026-11-26T17:46:22",
   "description": "Arca Plus: streaming media saves; unknown-length progress overhead reduction; guarded cancel-error suppression",
-  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.23/patches-0.3.23.mpp",
+  "download_url": "https://github.com/Lumi-01/arca-personal-patches/releases/download/v0.3.24/patches-0.3.24.mpp",
   "signature_download_url": "",
-  "version": "0.3.23"
+  "version": "0.3.24"
 }
-
