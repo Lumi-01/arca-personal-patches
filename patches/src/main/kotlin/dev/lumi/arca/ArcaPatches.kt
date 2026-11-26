@@ -609,12 +609,28 @@ val trackerReductionPatch = bytecodePatch(
 @Suppress("unused")
 val streamingDownloadPlusPatch = bytecodePatch(
     name = "미디어 저장 스트리밍 (플러스)",
-    description = "플러스 앱의 이미지·GIF·동영상 저장을 작은 버퍼로 처리합니다. 재생·미리보기에는 적용되지 않습니다.",
+    description = "이미지·GIF·동영상을 스트리밍 저장하고, 진행률과 실패 상태를 보정해 다운로드 큐가 멈추지 않게 합니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
     extendWith("extensions/extension.mpe")
     execute {
+        val progressCallback = Fingerprint(
+            definingClass = "LM8/a${'$'}b;", name = "d",
+            parameters = listOf("LM8/a;", "I"), returnType = "V",
+        ).method
+        val callbackInsns = progressCallback.implementation!!.instructions
+        val progressDelivery = callbackInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() == "LL8/a;->a(I)V"
+        }
+        check(progressDelivery >= 0 && callbackInsns.count {
+            (it as? ReferenceInstruction)?.reference.toString() == "LL8/a;->a(I)V"
+        } == 1) { "Download progress callback changed" }
+        progressCallback.addInstructions(progressDelivery, """
+            invoke-static {p1}, Llocal/arca/DownloadProgress;->activePercent(I)I
+            move-result p1
+        """.trimIndent())
+
         val endpoint = Fingerprint(
             definingClass = "LN8/a;", name = "c",
             parameters = listOf("Ljava/lang/String;", "LS7/e;"),
@@ -643,6 +659,37 @@ val streamingDownloadPlusPatch = bytecodePatch(
         saver.addInstructions(index + 3, """
             move-result-object p4
             invoke-static {p4, v0}, Llocal/arca/StreamCopy;->copy(Ljava/io/InputStream;Ljava/io/OutputStream;)V
+        """.trimIndent())
+
+        // A network or MediaStore exception is caught by the download coroutine,
+        // but the original failure branch only records FAILED. Unlike the
+        // success branch, it never publishes the new list or signals the serial
+        // queue to start the next item, leaving the UI stuck on DOWNLOADING.
+        val queueCoroutine = Fingerprint(
+            definingClass = "LQa/b${'$'}b;", name = "C",
+            parameters = listOf("Ljava/lang/Object;"), returnType = "Ljava/lang/Object;",
+        ).method
+        val queueInsns = queueCoroutine.implementation!!.instructions
+        val failedState = queueInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Llive/arca/android/model/data/DownloadItem;->changeState(LJa/f;)Llive/arca/android/model/data/DownloadItem;"
+        }
+        val failedPut = queueInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"
+        }
+        check(failedState >= 0 && failedPut > failedState && queueInsns.count {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Ljava/util/Map;->put(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"
+        } == 1) { "Download failure handling changed" }
+        queueCoroutine.addInstructions(failedPut + 1, """
+            iget-object v2, v1, LQa/b${'$'}b;->H:LQa/b;
+            invoke-static {v2}, LQa/b;->f(LQa/b;)Lr8/A;
+            move-result-object v0
+            sget-object v3, LN7/M;->a:LN7/M;
+            invoke-interface {v0, v3}, Lr8/A;->m(Ljava/lang/Object;)Z
+            iget-object v2, v1, LQa/b${'$'}b;->H:LQa/b;
+            invoke-static {v2}, LQa/b;->h(LQa/b;)V
         """.trimIndent())
     }
 }

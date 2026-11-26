@@ -1,6 +1,6 @@
 {
   "NOTE": "Do NOT manually edit this file. This file is automatically updated when semantic release (release.yml) runs. Manually editing this file can break your releases and break third party tools that use this file.",
-  "version": "0.3.17",
+  "version": "0.3.18",
   "patches": [
     {
       "name": "Morphe 설정·광고·스프링 전환",
@@ -35,7 +35,7 @@
     },
     {
       "name": "미디어 저장 스트리밍 (플러스)",
-      "description": "플러스 앱의 이미지·GIF·동영상 저장을 작은 버퍼로 처리합니다. 재생·미리보기에는 적용되지 않습니다.",
+      "description": "이미지·GIF·동영상을 스트리밍 저장하고, 진행률과 실패 상태를 보정해 다운로드 큐가 멈추지 않게 합니다.",
       "default": true,
       "category": null,
       "dependencies": [],
