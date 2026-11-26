@@ -609,12 +609,37 @@ val trackerReductionPatch = bytecodePatch(
 @Suppress("unused")
 val streamingDownloadPlusPatch = bytecodePatch(
     name = "미디어 저장 스트리밍 (플러스)",
-    description = "미디어 스트리밍 저장과 취소된 다운로드의 실패 표시를 보완합니다.",
+    description = "미디어를 스트리밍 저장해 메모리와 파일 쓰기를 줄이고, 후속 다운로드에서 연결을 재사용합니다. 취소된 다운로드의 실패 표시도 보완합니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
     extendWith("extensions/extension.mpe")
     execute {
+        // Each Plus download currently builds a new Retrofit and OkHttp client.
+        // Keep the download API's first configured client so the serial queue can
+        // reuse its DNS cache and OkHttp connection pool between transfers. The
+        // per-download progress call adapter is attached to Retrofit separately.
+        val serviceFactory = Fingerprint(
+            definingClass = "LI8/a;", name = "f",
+            parameters = listOf("LUb/k${'$'}a;"), returnType = "Ljava/lang/Object;",
+        ).method
+        val factoryInsns = serviceFactory.implementation!!.instructions
+        val builtClient = factoryInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Lp025bb/z${'$'}a;->c()Lp025bb/z;"
+        }
+        check(builtClient >= 0 && factoryInsns[builtClient + 1].opcode == Opcode.MOVE_RESULT_OBJECT &&
+            factoryInsns.count {
+                (it as? ReferenceInstruction)?.reference.toString() ==
+                    "Lp025bb/z${'$'}a;->c()Lp025bb/z;"
+            } == 1) { "Download HTTP client construction changed" }
+        serviceFactory.addInstructions(builtClient + 2, """
+            iget-object p0, p0, LI8/a;->a:Ljava/lang/Class;
+            invoke-static {p0, v1}, Llocal/arca/DownloadClientPool;->reuse(Ljava/lang/Class;Ljava/lang/Object;)Ljava/lang/Object;
+            move-result-object v1
+            check-cast v1, Lp025bb/z;
+        """.trimIndent())
+
         val progressCallback = Fingerprint(
             definingClass = "LM8/a${'$'}b;", name = "d",
             parameters = listOf("LM8/a;", "I"), returnType = "V",
@@ -729,7 +754,7 @@ val streamingDownloadPlusPatch = bytecodePatch(
             sget-object v6, LN7/M;->a:LN7/M;
             return-object v6
             :morphe_not_user_cancelled
-        """.trimIndent())
+        """.trimIndent(), ExternalLabel("morphe_not_user_cancelled", queueInsns[cancellationCheck + 1]))
         val failedState = queueInsns.indexOfFirst {
             (it as? ReferenceInstruction)?.reference.toString() ==
                 "Llive/arca/android/model/data/DownloadItem;->changeState(LJa/f;)Llive/arca/android/model/data/DownloadItem;"
@@ -772,3 +797,4 @@ val streamingDownloadPlusPatch = bytecodePatch(
 
     }
 }
+
