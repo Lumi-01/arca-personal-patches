@@ -609,7 +609,7 @@ val trackerReductionPatch = bytecodePatch(
 @Suppress("unused")
 val streamingDownloadPlusPatch = bytecodePatch(
     name = "미디어 저장 스트리밍 (플러스)",
-    description = "이미지·GIF·동영상을 스트리밍 저장하고, 진행률과 실패 상태를 보정해 다운로드 큐가 멈추지 않게 합니다.",
+    description = "이미지·GIF·동영상을 스트리밍 저장하고, 알 수 없는 파일 크기의 과도한 진행률 갱신과 실패 상태 누락을 보완합니다.",
     default = true,
 ) {
     compatibleWith(arcaPlus)
@@ -630,6 +630,40 @@ val streamingDownloadPlusPatch = bytecodePatch(
             invoke-static {p1}, Llocal/arca/DownloadProgress;->activePercent(I)I
             move-result p1
         """.trimIndent())
+
+        // With chunked responses, contentLength() is -1. The app's original
+        // byte-to-percent formula then changes on every Okio read and posts a
+        // Handler task for each chunk. Skip those unbounded UI updates; EOF
+        // still reports completion and the list switches to its success state.
+        val progressRead = Fingerprint(
+            definingClass = "LM8/a${'$'}b;", name = "x0",
+            parameters = listOf("Lpb/e;", "J"), returnType = "J",
+        ).method
+        val readInsns = progressRead.implementation!!.instructions
+        val sourceRead = readInsns.indexOfFirst {
+            (it as? ReferenceInstruction)?.reference.toString() ==
+                "Lpb/n;->x0(Lpb/e;J)J"
+        }
+        check(sourceRead >= 0 && readInsns[sourceRead + 1].opcode == Opcode.MOVE_RESULT_WIDE) {
+            "Download response reader changed"
+        }
+        progressRead.addInstructionsWithLabels(sourceRead + 2, """
+            const-wide/16 v0, -0x1
+            cmp-long v0, p1, v0
+            if-eqz v0, :morphe_known_length_or_eof
+            iget-object v0, p0, LM8/a${'$'}b;->C:LM8/a;
+            invoke-virtual {v0}, LM8/a;->u()Lbb/E;
+            move-result-object v0
+            invoke-virtual {v0}, Lbb/E;->g()J
+            move-result-wide v0
+            const-wide/16 v2, 0x0
+            cmp-long v0, v0, v2
+            if-lez v0, :morphe_skip_unknown_progress
+            :morphe_known_length_or_eof
+            goto :morphe_resume_progress_read
+            :morphe_skip_unknown_progress
+            return-wide p1
+        """.trimIndent(), ExternalLabel("morphe_resume_progress_read", readInsns[sourceRead + 2]))
 
         val endpoint = Fingerprint(
             definingClass = "LN8/a;", name = "c",
